@@ -1,0 +1,902 @@
+{
+  "WELLNESS_PACKAGES": [
+    {
+      "group": "First Shield",
+      "note": "Early essentials: from vaccines, deworming, and vet check-ups. Valid for 1 year from the date of purchase.",
+      "items": [
+        {
+          "name": "First Shield Kitten",
+          "sku": "COMBO0016STOF",
+          "audience": "Kittens below 6 months of age",
+          "price": 4599,
+          "mrp": 8391,
+          "off": "45% OFF",
+          "inclusions": [
+            "CRP - 3-in-1 Feline Core Vaccine (3 Doses)",
+            "ARV - Anti Rabies Vaccine (2 Doses)",
+            "Vet Consultation (4 Sessions)",
+            "Deworming (4 Sessions)"
+          ],
+          "perk": "Additional Perk: Flat 15% off on all clinical services"
+        },
+        {
+          "name": "First Shield Puppy",
+          "sku": "COMBO0017STOF",
+          "audience": "Puppies below 6 months of age",
+          "price": 4599,
+          "mrp": 8391,
+          "off": "45% OFF",
+          "inclusions": [
+            "DHPPi/L - Canine Core Vaccine (3 Doses)",
+            "ARV - Anti Rabies Vaccine (2 Doses)",
+            "Vet Consultation (4 Sessions)",
+            "Deworming (4 Sessions)"
+          ],
+          "perk": "Additional Perk: Flat 15% off on all clinical services"
+        }
+      ]
+    },
+    {
+      "group": "Lifelong Wellness",
+      "note": "Age-specific care: vaccines, diagnostics, consultations, and screenings. Valid for 1 year from the date of purchase.",
+      "items": [
+        {
+          "name": "Foundation Care",
+          "sku": "Cat: COMBO0020STOF · Dog: COMBO0021STOF",
+          "audience": "Newborn pets below 8 months of age",
+          "price": 6499,
+          "mrp": 10941,
+          "off": "40% OFF",
+          "inclusions": [
+            "CRP / DHPPi/L - Core Vaccine (3 Doses)",
+            "ARV - Anti Rabies Vaccine (2 Doses)",
+            "Vet Consultation (4 Sessions)",
+            "Deworming (4 Sessions)",
+            "CBC - Complete Blood Cell Count",
+            "LFT - Liver Function Test",
+            "KFT - Kidney Function Test"
+          ]
+        },
+        {
+          "name": "Active Care",
+          "sku": "Cat: COMBO0018STOF · Dog: COMBO0019STOF",
+          "audience": "Adult pets between 1-8 years of age",
+          "price": 4299,
+          "mrp": 8444,
+          "off": "50% OFF",
+          "inclusions": [
+            "CRP / DHPPi/L - Core Vaccine",
+            "ARV - Anti Rabies Vaccine",
+            "Vet Consultation (4 Sessions)",
+            "Deworming (4 Sessions)",
+            "CBC - Complete Blood Cell Count",
+            "LFT - Liver Function Test",
+            "KFT - Kidney Function Test",
+            "Urine Analysis"
+          ]
+        },
+        {
+          "name": "Senior Care",
+          "sku": "Cat: COMBO0022STOF · Dog: COMBO0023STOF",
+          "audience": "Senior pets more than 7 years of age",
+          "price": 8999,
+          "mrp": 14743,
+          "off": "40% OFF",
+          "inclusions": [
+            "CRP / DHPPi/L - Core Vaccine",
+            "ARV - Anti Rabies Vaccine",
+            "Vet Consultation (4 Sessions)",
+            "Deworming (4 Sessions)",
+            "CBC - Complete Blood Cell Count",
+            "LFT Advance - Liver Function Test",
+            "KFT Advance - Kidney Function Test",
+            "Urine Analysis",
+            "Thyroid Test",
+            "Full Abdominal Ultrasound"
+          ]
+        }
+      ]
+    },
+    {
+      "group": "Annual Health Checks",
+      "note": "Monitor their health yearly with routine checks and expert care. Valid for 1 year from the date of purchase.",
+      "items": [
+        {
+          "name": "Essential Health Check",
+          "sku": "Cat: COMBO0024STOF · Dog: COMBO0025STOF",
+          "audience": "For newborn & adult pets",
+          "price": 2199,
+          "mrp": 5546,
+          "off": "60% OFF",
+          "inclusions": [
+            "Vet Consultation (4 Sessions)",
+            "Deworming (4 Sessions)",
+            "CBC - Complete Blood Cell Count",
+            "LFT - Liver Function Test",
+            "KFT - Kidney Function Test"
+          ]
+        },
+        {
+          "name": "Complete Health Check",
+          "sku": "Cat: COMBO0026STOF · Dog: COMBO0027STOF",
+          "audience": "For senior pets",
+          "price": 6999,
+          "mrp": 12745,
+          "off": "45% OFF",
+          "inclusions": [
+            "Vet Consultation (4 Sessions)",
+            "Deworming (4 Sessions)",
+            "CBC - Complete Blood Cell Count",
+            "LFT Advance - Liver Function Test",
+            "KFT Advance - Kidney Function Test",
+            "Urine Analysis Advance",
+            "Thyroid Test",
+            "Full Abdominal Ultrasound"
+          ]
+        }
+      ]
+    },
+    {
+      "group": "Safe Surgery",
+      "note": "Year-round health monitoring with routine checks and diagnostics. Valid for 1 year. Pack also includes: 15% off on Pharma · 15% off on Post-op requirement · 15% off on Blood tests if re-test required.",
+      "items": [
+        {
+          "name": "Cat Neuter Surgery",
+          "sku": "COMBO0012STOF",
+          "audience": "For Male Cat",
+          "price": 6999,
+          "mrp": 9945,
+          "off": "30% OFF",
+          "inclusions": [
+            "Vet Consultation (4 Sessions)",
+            "CBC - Complete Blood Cell Count",
+            "LFT - Liver Function Test",
+            "KFT - Kidney Function Test",
+            "Neuter Surgery"
+          ]
+        },
+        {
+          "name": "Cat Spay Surgery",
+          "sku": "COMBO0013STOF",
+          "audience": "For Female Cat",
+          "price": 9999,
+          "mrp": 12945,
+          "off": "30% OFF",
+          "inclusions": [
+            "Vet Consultation (4 Sessions)",
+            "CBC - Complete Blood Cell Count",
+            "LFT - Liver Function Test",
+            "KFT - Kidney Function Test",
+            "Spay Surgery"
+          ]
+        },
+        {
+          "name": "Dog Neuter Surgery",
+          "sku": "COMBO0014STOF",
+          "audience": "For Male Dog",
+          "price": 8999,
+          "mrp": 12945,
+          "off": "30% OFF",
+          "inclusions": [
+            "Vet Consultation (4 Sessions)",
+            "CBC - Complete Blood Cell Count",
+            "LFT - Liver Function Test",
+            "KFT - Kidney Function Test",
+            "Neuter Surgery"
+          ]
+        },
+        {
+          "name": "Dog Spay Surgery",
+          "sku": "COMBO0015STOF",
+          "audience": "For Female Dog",
+          "price": 9999,
+          "mrp": 14945,
+          "off": "30% OFF",
+          "inclusions": [
+            "Vet Consultation (4 Sessions)",
+            "CBC - Complete Blood Cell Count",
+            "LFT - Liver Function Test",
+            "KFT - Kidney Function Test",
+            "Spay Surgery"
+          ]
+        }
+      ]
+    }
+  ],
+  "GROOMING_PACKAGE_CARDS": [
+    {
+      "group": "Clean & Dry",
+      "note": "Dry shampoo includes: application & light freshening. Bath & Dry includes: bath, conditioning & blow dry & soft brushing.",
+      "items": [
+        {
+          "name": "Dry Shampoo Bath",
+          "audience": "Puppies",
+          "price": 719
+        },
+        {
+          "name": "Dry Shampoo Bath",
+          "audience": "Kittens",
+          "price": 819
+        },
+        {
+          "name": "Bath & Dry",
+          "audience": "Cats",
+          "price": 999
+        },
+        {
+          "name": "Bath & Dry",
+          "audience": "Small Dogs (<10 kg)",
+          "price": 819
+        },
+        {
+          "name": "Bath & Dry",
+          "audience": "Medium Dogs (10-25 kg)",
+          "price": 949
+        },
+        {
+          "name": "Bath & Dry",
+          "audience": "Large Dogs (>25 kg)",
+          "price": 1089
+        }
+      ]
+    },
+    {
+      "group": "Complete Grooming",
+      "bestseller": true,
+      "note": "Includes: fur trim, paw & ear cleaning, bath & conditioning, dental cleaning*, blow dry, light brushing, sanitary trim. *Dental cleaning is excluded for cats.",
+      "items": [
+        {
+          "name": "Complete Grooming — Short Coat",
+          "audience": "Cats",
+          "price": 1499
+        },
+        {
+          "name": "Complete Grooming — Short Coat",
+          "audience": "Small Dogs (<10 kg)",
+          "price": 1499
+        },
+        {
+          "name": "Complete Grooming — Short Coat",
+          "audience": "Medium Dogs (10-25 kg)",
+          "price": 1749
+        },
+        {
+          "name": "Complete Grooming — Short Coat",
+          "audience": "Large Dogs (>25 kg)",
+          "price": 1999
+        },
+        {
+          "name": "Complete Grooming — Long Coat",
+          "audience": "Cats",
+          "price": 1999
+        },
+        {
+          "name": "Complete Grooming — Long Coat",
+          "audience": "Small Dogs (<10 kg)",
+          "price": 1999
+        },
+        {
+          "name": "Complete Grooming — Long Coat",
+          "audience": "Medium Dogs (10-25 kg)",
+          "price": 2249
+        },
+        {
+          "name": "Complete Grooming — Long Coat",
+          "audience": "Large Dogs (>25 kg)",
+          "price": 2499
+        }
+      ]
+    },
+    {
+      "group": "Quick Services",
+      "note": "À la carte grooming add-ons.",
+      "items": [
+        {
+          "name": "Mouth & Dental Care",
+          "audience": "Dogs",
+          "price": 129
+        },
+        {
+          "name": "Eyes & Ears Cleaning",
+          "audience": "Dogs & Cats",
+          "price": 199
+        },
+        {
+          "name": "Nail Trimming & Filing",
+          "audience": "Dogs & Cats",
+          "price": 199
+        },
+        {
+          "name": "Nail Trim & Paw Care",
+          "audience": "Dogs & Cats",
+          "price": 299
+        },
+        {
+          "name": "Sanitary Area Grooming",
+          "audience": "Dogs & Cats",
+          "price": 399
+        },
+        {
+          "name": "Fur Trim",
+          "audience": "Dogs & Cats",
+          "price": 1199
+        },
+        {
+          "name": "Face Trim",
+          "audience": "Dogs & Cats",
+          "price": 399
+        }
+      ]
+    },
+    {
+      "group": "Add-on Care",
+      "note": "Note: Expert Styling is available as an add-on for long-coat breeds only, with Bath & Dry or Complete Routine.",
+      "items": [
+        {
+          "name": "Expert Styling",
+          "audience": "Dogs & Cats",
+          "price": 599
+        },
+        {
+          "name": "Medicated Bath (Tick & Flea)",
+          "audience": "Dogs & Cats",
+          "price": 299
+        },
+        {
+          "name": "Medicated Bath (Fungal/Bacterial)",
+          "audience": "Dogs & Cats",
+          "price": 299
+        },
+        {
+          "name": "Dematting",
+          "audience": "Dogs & Cats",
+          "price": 599
+        },
+        {
+          "name": "Deshedding",
+          "audience": "Dogs & Cats",
+          "price": 599
+        }
+      ]
+    }
+  ],
+  "SUBSCRIPTION_TABLES": [
+    {
+      "group": "Weekday Subscription — Bath & Dry",
+      "savings": "Save up to 40%",
+      "columns": [
+        "Package",
+        "Cats",
+        "Small Dogs (<10kg)",
+        "Medium Dogs (10-25kg)",
+        "Large Dogs (>25kg)",
+        "Savings"
+      ],
+      "rows": [
+        [
+          "4-Session",
+          "₹2999 (₹3996)",
+          "₹2449 (₹3276)",
+          "₹2849 (₹3796)",
+          "₹3249 (₹4356)",
+          "25%"
+        ],
+        [
+          "8-Session",
+          "₹5599 (₹7992)",
+          "₹4549 (₹6552)",
+          "₹5299 (₹7592)",
+          "₹6099 (₹8712)",
+          "30%"
+        ],
+        [
+          "12-Session",
+          "₹7199 (₹11988)",
+          "₹5899 (₹9828)",
+          "₹6799 (₹11388)",
+          "₹7849 (₹13068)",
+          "40%"
+        ]
+      ]
+    },
+    {
+      "group": "Weekday Subscription — Complete Grooming (Short Coat)",
+      "savings": "Save up to 40%",
+      "columns": [
+        "Package",
+        "Cats",
+        "Small Dogs (<10kg)",
+        "Medium Dogs (10-25kg)",
+        "Large Dogs (>25kg)",
+        "Savings"
+      ],
+      "rows": [
+        [
+          "4-Session",
+          "₹4499 (₹5996)",
+          "₹4499 (₹5996)",
+          "₹5249 (₹6996)",
+          "₹5999 (₹7996)",
+          "25%"
+        ],
+        [
+          "8-Session",
+          "₹8399 (₹11992)",
+          "₹8399 (₹11992)",
+          "₹9799 (₹13992)",
+          "₹11199 (₹15992)",
+          "30%"
+        ],
+        [
+          "12-Session",
+          "₹10799 (₹17988)",
+          "₹10799 (₹17988)",
+          "₹12599 (₹20988)",
+          "₹14399 (₹23988)",
+          "40%"
+        ]
+      ]
+    },
+    {
+      "group": "Weekday Subscription — Complete Grooming (Long Coat)",
+      "savings": "Save up to 40%",
+      "columns": [
+        "Package",
+        "Cats",
+        "Small Dogs (<10kg)",
+        "Medium Dogs (10-25kg)",
+        "Large Dogs (>25kg)",
+        "Savings"
+      ],
+      "rows": [
+        [
+          "4-Session",
+          "₹5997 (₹7996)",
+          "₹5997 (₹7996)",
+          "₹6747 (₹8996)",
+          "₹7497 (₹9996)",
+          "25%"
+        ],
+        [
+          "8-Session",
+          "₹11194 (₹15992)",
+          "₹11194 (₹15992)",
+          "₹12594 (₹17992)",
+          "₹13994 (₹19992)",
+          "30%"
+        ],
+        [
+          "12-Session",
+          "₹14393 (₹23988)",
+          "₹14393 (₹23988)",
+          "₹16193 (₹26988)",
+          "₹17993 (₹29988)",
+          "40%"
+        ]
+      ]
+    },
+    {
+      "group": "Anyday Subscription — Bath & Dry",
+      "savings": "Save up to 20%",
+      "columns": [
+        "Package",
+        "Cats",
+        "Small Dogs (<10kg)",
+        "Medium Dogs (10-25kg)",
+        "Large Dogs (>25kg)",
+        "Savings"
+      ],
+      "rows": [
+        [
+          "4-Session",
+          "₹3599 (₹3996)",
+          "₹2949 (₹3276)",
+          "₹3399 (₹3796)",
+          "₹3899 (₹4356)",
+          "10%"
+        ],
+        [
+          "8-Session",
+          "₹6799 (₹7992)",
+          "₹5559 (₹6552)",
+          "₹6399 (₹7592)",
+          "₹7399 (₹8712)",
+          "15%"
+        ],
+        [
+          "12-Session",
+          "₹9599 (₹11988)",
+          "₹7859 (₹9828)",
+          "₹9099 (₹11388)",
+          "₹10399 (₹13068)",
+          "20%"
+        ]
+      ]
+    },
+    {
+      "group": "Anyday Subscription — Complete Grooming (Short Coat)",
+      "savings": "Save up to 20%",
+      "columns": [
+        "Package",
+        "Cats",
+        "Small Dogs (<10kg)",
+        "Medium Dogs (10-25kg)",
+        "Large Dogs (>25kg)",
+        "Savings"
+      ],
+      "rows": [
+        [
+          "4-Session",
+          "₹5399 (₹5996)",
+          "₹5399 (₹5996)",
+          "₹6299 (₹6996)",
+          "₹7199 (₹7996)",
+          "10%"
+        ],
+        [
+          "8-Session",
+          "₹10159 (₹11992)",
+          "₹10159 (₹11992)",
+          "₹11899 (₹13992)",
+          "₹13599 (₹15992)",
+          "15%"
+        ],
+        [
+          "12-Session",
+          "₹14399 (₹17988)",
+          "₹14399 (₹17988)",
+          "₹16799 (₹20988)",
+          "₹19199 (₹23988)",
+          "20%"
+        ]
+      ]
+    },
+    {
+      "group": "Anyday Subscription — Complete Grooming (Long Coat)",
+      "savings": "Save up to 20%",
+      "columns": [
+        "Package",
+        "Cats",
+        "Small Dogs (<10kg)",
+        "Medium Dogs (10-25kg)",
+        "Large Dogs (>25kg)",
+        "Savings"
+      ],
+      "rows": [
+        [
+          "4-Session",
+          "₹7196 (₹7996)",
+          "₹7196 (₹7996)",
+          "₹8096 (₹8996)",
+          "₹8996 (₹9996)",
+          "10%"
+        ],
+        [
+          "8-Session",
+          "₹13593 (₹15992)",
+          "₹13593 (₹15992)",
+          "₹15923 (₹17992)",
+          "₹16993 (₹19992)",
+          "15%"
+        ],
+        [
+          "12-Session",
+          "₹19190 (₹23988)",
+          "₹19190 (₹23988)",
+          "₹21590 (₹26988)",
+          "₹23990 (₹29988)",
+          "20%"
+        ]
+      ]
+    }
+  ],
+  "CONSULTATION_PRICES": [
+    {
+      "name": "Consultation",
+      "price": 599,
+      "tag": "Standard Visit",
+      "desc": "Standard in-clinic veterinary consultation for any new concern, illness, or routine check-up."
+    },
+    {
+      "name": "Follow-up Consultation",
+      "price": 399,
+      "tag": "Within 7 days",
+      "desc": "Applies only when the follow-up visit is within 7 days of the original consultation, for the same issue. Outside this window, or for a different/new issue, the full Consultation price (₹599) applies."
+    }
+  ],
+  "VACCINATION_PRICES": [
+    {
+      "sku": "TMPVV0002STOF",
+      "name": "Felocell – Feline",
+      "route": "SC",
+      "dose": "1ml",
+      "presentation": "1ml/vial",
+      "validity": "12 months",
+      "price": 1399,
+      "desc": "Core vaccine for cats, protecting against common feline diseases such as feline rhinotracheitis, calicivirus, and panleukopenia (feline distemper). Essential for maintaining a cat's overall health and preventing severe, potentially life-threatening illnesses."
+    },
+    {
+      "sku": "TMPVV0003STOF",
+      "name": "Tricat – Feline",
+      "route": "SC",
+      "dose": "1ml",
+      "presentation": "1ml/vial",
+      "validity": "12 months",
+      "price": 1399,
+      "desc": "Combination vaccine protecting cats against three major diseases: feline rhinotracheitis, calicivirus, and panleukopenia. Particularly effective for early kitten immunity and continued protection for adult cats as part of a routine schedule."
+    },
+    {
+      "sku": "TMPVV0004STOF",
+      "name": "Kennel Cough Vaccine – Canine",
+      "route": "I/N",
+      "dose": "0.3ml",
+      "presentation": "0.3ml/vial",
+      "validity": "6 months",
+      "price": 1299,
+      "desc": "Safeguards dogs from kennel cough, a contagious respiratory infection caused by Bordetella bronchiseptica and canine parainfluenza virus. Commonly required for dogs attending daycare, boarding, or training facilities."
+    },
+    {
+      "sku": "TMPVV0005STOF",
+      "name": "ARV – Canine and Feline",
+      "route": "IM/SC",
+      "dose": "1ml",
+      "presentation": "1ml/vial",
+      "validity": "12 months",
+      "price": 599,
+      "desc": "Anti-Rabies Vaccine (ARV), crucial for both dogs and cats — protects against rabies, a fatal viral disease that can affect animals and humans. Often legally mandated."
+    },
+    {
+      "sku": "TMPVV0006STOF",
+      "name": "Vanguard 5 L4 – Canine",
+      "route": "SC",
+      "dose": "1ml",
+      "presentation": "1ml/vial",
+      "validity": "12 months",
+      "price": 1499,
+      "desc": "Combination vaccine for dogs protecting against five core diseases: canine distemper, adenovirus (hepatitis), parvovirus, parainfluenza, and leptospirosis (four strains)."
+    },
+    {
+      "sku": "TMPVV0007STOF",
+      "name": "Vanguard CV – Canine",
+      "route": "SC",
+      "dose": "1ml",
+      "presentation": "1ml/vial",
+      "validity": "12 months",
+      "price": 849,
+      "desc": "Protects dogs against canine coronavirus, which can cause gastrointestinal distress and diarrhea, particularly in puppies."
+    },
+    {
+      "sku": "TMPVV0008STOF",
+      "name": "Vanguard 5 L4 CV – Canine",
+      "route": "SC",
+      "dose": "1ml",
+      "presentation": "1ml/vial",
+      "validity": "12 months",
+      "price": 2299,
+      "desc": "Extended combination vaccine offering protection against canine distemper, adenovirus, parvovirus, parainfluenza, leptospirosis (four strains), and coronavirus — comprehensive immunity for dogs at higher exposure risk."
+    }
+  ],
+  "GROOMING_GUIDELINES": [
+    {
+      "icon": "💉",
+      "title": "Vaccination Requirement",
+      "points": [
+        "A pet must have all mandatory vaccinations completed, including annual booster vaccinations, before a grooming appointment can be accepted.",
+        "Grooming cannot be performed if the pet's vaccination records are incomplete."
+      ]
+    },
+    {
+      "icon": "🩹",
+      "title": "Skin Conditions",
+      "points": [
+        "If the pet has any skin infection, rashes, wounds, or other dermatological concerns, the pet parent must inform the clinic before booking the grooming appointment.",
+        "The doctor may recommend a health check before proceeding with grooming."
+      ]
+    },
+    {
+      "icon": "⚠️",
+      "title": "Hyperactive or Aggressive Pets",
+      "points": [
+        "If a pet is hyperactive, aggressive, or does not cooperate during grooming, the pet parent must inform the clinic while booking the appointment.",
+        "A consultation call with the doctor may be arranged before the appointment.",
+        "Based on the doctor's assessment, calming medication (such as Gabapentin, if appropriate) may be prescribed to be administered before the grooming appointment."
+      ]
+    },
+    {
+      "icon": "🐶",
+      "title": "Puppies Below Four Months",
+      "points": [
+        "For puppies under 4 months of age, a wet bath is not recommended.",
+        "Only a dry bath can be provided, as advised by the veterinarians."
+      ]
+    }
+  ],
+  "CLINIC_POC": [
+    {
+      "clinic": "Hosa Road",
+      "lat": 12.8998,
+      "lng": 77.6413,
+      "number": "88679 44007",
+      "manager": "Pamela Majumder",
+      "email": "pamela.mlovespets@supertails.in",
+      "phone": "8240440527",
+      "zone": "South & East",
+      "zonalHead": "Niraj Manani",
+      "address": "Ground Floor, Athira Heights, 795A, NH 44, AECS Layout, Singasandra, Bengaluru, Karnataka 560114",
+      "hours": "10 AM – 7 PM"
+    },
+    {
+      "clinic": "Bannerghatta",
+      "lat": 12.8845,
+      "lng": 77.5972,
+      "number": "99028 57395",
+      "manager": "Dheeraj",
+      "email": "dheeraj.rlovespets@supertails.in",
+      "phone": "8850335710",
+      "zone": "South & East",
+      "zonalHead": "Niraj Manani",
+      "address": "29/2, Bannerghatta Rd, Vijayashri Layout, Syndicate Bank Colony, Omkar Nagar, Hulimavu, Bengaluru, Karnataka 560076",
+      "hours": "9 AM – 10 PM · All days"
+    },
+    {
+      "clinic": "Banashankari",
+      "lat": 12.928,
+      "lng": 77.549,
+      "number": "80502 12988",
+      "manager": "Kumar T",
+      "email": "kumar.t@supertails.in",
+      "phone": "9591545550",
+      "zone": "South & East",
+      "zonalHead": "Niraj Manani",
+      "address": "1587, 36th Cross, Outer Ring Rd, Banashankari 2nd Stage, Banashankari, Bengaluru, Karnataka 560070",
+      "hours": "9 AM – 10 PM · All days"
+    },
+    {
+      "clinic": "Brookfield",
+      "lat": 12.965,
+      "lng": 77.713,
+      "number": "80502 12079",
+      "manager": "Shilo",
+      "email": "shilolovespets@supertails.in",
+      "phone": "9731921412",
+      "zone": "South & East",
+      "zonalHead": "Niraj Manani",
+      "address": "Ground Floor, Site No. 2, No. 6/4, Kundalahalli Main Rd, opposite Smart Bazar, Lakshminarayana Pura, AECS Layout, Munnekolala, Bengaluru, Karnataka 560037",
+      "hours": "9 AM – 10 PM · All days"
+    },
+    {
+      "clinic": "Whitefield",
+      "lat": 12.9698,
+      "lng": 77.75,
+      "number": "80501 78007",
+      "manager": "Abhilash",
+      "email": "abhilash.mlovespets@supertails.in",
+      "phone": "7899386409",
+      "zone": "South & East",
+      "zonalHead": "Niraj Manani",
+      "address": "Shubhtaa Towwers, Site No. 10, Prashant Layout ITPL, Whitefield Main Rd, Bengaluru, Karnataka 560066",
+      "hours": "9 AM – 10 PM · All days"
+    },
+    {
+      "clinic": "KR Puram",
+      "lat": 12.9975,
+      "lng": 77.698,
+      "number": "80502 23007",
+      "manager": "Deepak Alwin",
+      "email": "deepak.alovespets@supertails.in",
+      "phone": "7019850360",
+      "zone": "South & East",
+      "zonalHead": "Niraj Manani",
+      "address": "646/1A and 646/1B, Athithi Layout, S.T Halli, Bhattarahalli, Krishnarajapuram, Bengaluru, Karnataka 560036",
+      "hours": "10 AM – 7 PM"
+    },
+    {
+      "clinic": "RMV",
+      "lat": 13.0278,
+      "lng": 77.5698,
+      "number": "80501 45007",
+      "manager": "Aishwarya",
+      "email": "aishwarya.klovespets@supertails.in",
+      "phone": "6364431121",
+      "zone": "North & Central",
+      "zonalHead": "Akshay Amrith",
+      "address": "Ground Floor, No. 7, Balaji Arcade, New BEL Rd, opposite HP Petrol Bunk, Chikkamaranahalli, Dollars Colony, R.M.V. 2nd Stage, Bengaluru, Karnataka 560094",
+      "hours": "10 AM – 7 PM"
+    },
+    {
+      "clinic": "Rajaji Nagar",
+      "lat": 12.9985,
+      "lng": 77.557,
+      "number": "99028 57893",
+      "manager": "Saji R",
+      "email": "saji.rlovespets@supertails.in",
+      "phone": "9743789001",
+      "zone": "North & Central",
+      "zonalHead": "Akshay Amrith",
+      "address": "7, 2nd Cross Rd, D-Block, Gayatrinagar, Rajajinagar, Bengaluru, Karnataka 560010",
+      "hours": "9 AM – 10 PM · All days"
+    },
+    {
+      "clinic": "RT Nagar",
+      "lat": 13.023,
+      "lng": 77.595,
+      "number": "89048 04007",
+      "manager": "Abhilash M",
+      "email": "abhilash.mlovespets@supertails.in",
+      "phone": "7899386409",
+      "zone": "North & Central",
+      "zonalHead": "Akshay Amrith",
+      "address": "First Floor, No. 160, RT Nagar Main Rd, Phase 3, Matadahalli, Krishnappa Block, Ganganagar, Bengaluru, Karnataka 560032",
+      "hours": "10 AM – 7 PM"
+    },
+    {
+      "clinic": "Koramangala",
+      "lat": 12.9352,
+      "lng": 77.6245,
+      "number": "80502 13620",
+      "manager": "Md Zabi",
+      "email": "mohammed.zabiullahlovespets@supertails.in",
+      "phone": "7892880441",
+      "zone": "North & Central",
+      "zonalHead": "Akshay Amrith",
+      "address": "156, 1st Cross Rd, 1st Block Koramangala, Koramangala, Bengaluru, Karnataka 560034",
+      "hours": "9 AM – 10 PM · All days"
+    },
+    {
+      "clinic": "Kalyan Nagar",
+      "lat": 13.018,
+      "lng": 77.639,
+      "number": "99028 59265",
+      "manager": "Kumar T",
+      "email": "kumar.t@supertails.in",
+      "phone": "9591545550",
+      "zone": "North & Central",
+      "zonalHead": "Akshay Amrith",
+      "address": "IGN Towers, Dodda Banaswadi Main Rd, Ram Gopal Layout, Subbannaiah Palya, Banaswadi, Bengaluru, Karnataka 560033",
+      "hours": "Open 24 hours"
+    },
+    {
+      "clinic": "Indiranagar",
+      "lat": 12.9719,
+      "lng": 77.6412,
+      "number": "80501 98007",
+      "manager": "Dinesh",
+      "email": "dinesh.rlovespets@supertails.in",
+      "phone": "8892242271",
+      "zone": "North & Central",
+      "zonalHead": "Akshay Amrith",
+      "address": null,
+      "hours": "9 AM – 10 PM · All days"
+    }
+  ],
+  "ESCALATION_CHAIN": [
+    {
+      "level": "Level 2",
+      "role": "Zonal Head — South & East",
+      "name": "Niraj Manani",
+      "email": "niraj.mlovespets@supertails.com",
+      "phone": "8160520680"
+    },
+    {
+      "level": "Level 2",
+      "role": "Zonal Head — North & Central",
+      "name": "Akshay Amrith",
+      "email": "akshay.alovespets@supertails.com",
+      "phone": "9972650546"
+    },
+    {
+      "level": "Level 3",
+      "role": "City Operations Head — Bangalore",
+      "name": "Sumeet Bhat",
+      "email": "sumeetlovespets@supertails.com",
+      "phone": "7303523001"
+    },
+    {
+      "level": "Level 4",
+      "role": "HOD",
+      "name": "Harsh Chandak",
+      "email": "harshlovespets@supertails.com",
+      "phone": "8692917727"
+    }
+  ]
+}

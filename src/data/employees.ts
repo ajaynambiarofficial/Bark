@@ -1,0 +1,166 @@
+import type { Employee, EmployeeRole, RoleDefinition } from "../types/auth";
+
+export const roleDefinitions: Record<EmployeeRole, RoleDefinition> = {
+  "sales-agent": {
+    label: "Sales Agent",
+    welcomeCopy: "Manage your operational escalations and stay connected with clinic teams.",
+    permissions: ["escalations:view", "escalations:create"],
+  },
+  "sales-team-lead": {
+    label: "Sales Team Lead",
+    welcomeCopy: "Stay on top of team escalations and coordinate timely resolutions.",
+    permissions: ["escalations:view", "escalations:create", "team:view"],
+  },
+  "sales-manager": {
+    label: "Sales Manager",
+    welcomeCopy: "Oversee team operations and maintain visibility across escalations.",
+    permissions: ["escalations:view", "escalations:create", "team:view", "team:manage"],
+  },
+  "zonal-head": {
+    label: "Zonal Head",
+    welcomeCopy: "Coordinate operations across your assigned clinics and teams.",
+    permissions: ["escalations:view", "escalations:create", "team:view", "team:manage", "clinic:manage"],
+  },
+  "clinic-front-desk": {
+    label: "Clinic Front Desk",
+    welcomeCopy: "Coordinate clinic operations and raise or respond to escalations.",
+    permissions: ["escalations:view", "escalations:create", "clinic:view"],
+  },
+  "clinic-manager": {
+    label: "Clinic Manager",
+    welcomeCopy: "Stay informed about clinic issues, ownership, and resolutions.",
+    permissions: ["escalations:view", "escalations:create", "clinic:view", "clinic:manage"],
+  },
+  doctor: {
+    label: "Doctor",
+    welcomeCopy: "Access relevant operational updates and assigned escalations.",
+    permissions: ["escalations:view", "clinical-context:view"],
+  },
+  groomer: {
+    label: "Groomer",
+    welcomeCopy: "Stay connected with your clinic team and manage service-related escalations.",
+    permissions: ["escalations:view", "escalations:create", "service-context:view"],
+  },
+  "central-management": {
+    label: "Central Management",
+    welcomeCopy: "Maintain visibility across teams and clinic operations.",
+    permissions: ["escalations:view", "operations:view", "teams:view"],
+  },
+  "system-administrator": {
+    label: "System Administrator",
+    welcomeCopy: "Access your authorized workspace and system administration context.",
+    permissions: ["escalations:view", "system-context:view"],
+  },
+  god: {
+    label: "GOD / Super Admin",
+    welcomeCopy: "Manage the Bark platform with global operational visibility.",
+    permissions: ["system:manage", "audit:view", "operations:view"],
+  },
+};
+
+export const mockEmployees: readonly Employee[] = [
+  {
+    id: "emp-sales-001",
+    displayName: "Ajay Nambiar",
+    email: "ajay.nambiar@example.supertails.com",
+    role: "sales-agent",
+    roleLabel: roleDefinitions["sales-agent"].label,
+    department: "Sales",
+    assignment: "Bengaluru Sales Team",
+    accountStatus: "active",
+  },
+  {
+    id: "emp-sales-lead-001",
+    displayName: "Lokesh Krishna",
+    email: "lokesh.krishna@example.supertails.com",
+    role: "sales-team-lead",
+    roleLabel: roleDefinitions["sales-team-lead"].label,
+    department: "Sales",
+    assignment: "South Region Sales",
+    accountStatus: "active",
+  },
+  {
+    id: "emp-sales-manager-001",
+    displayName: "Akshay S.",
+    email: "akshay.s@example.supertails.com",
+    role: "sales-manager",
+    roleLabel: roleDefinitions["sales-manager"].label,
+    department: "Sales Leadership",
+    assignment: "National Sales Operations",
+    accountStatus: "active",
+  },
+  {
+    id: "emp-frontdesk-001",
+    displayName: "Shilo",
+    email: "shilo@example.supertails.com",
+    role: "clinic-front-desk",
+    roleLabel: roleDefinitions["clinic-front-desk"].label,
+    department: "Clinic Operations",
+    assignment: "Indiranagar Clinic",
+    accountStatus: "active",
+  },
+  {
+    id: "emp-clinic-manager-001",
+    displayName: "Rohan Desai",
+    email: "rohan.desai@example.supertails.com",
+    role: "clinic-manager",
+    roleLabel: roleDefinitions["clinic-manager"].label,
+    department: "Clinic Operations",
+    assignment: "Whitefield Clinic",
+    accountStatus: "active",
+  },
+  {
+    id: "emp-doctor-001",
+    displayName: "Dr. Remya Nair",
+    email: "remya.nair@example.supertails.com",
+    role: "doctor",
+    roleLabel: roleDefinitions.doctor.label,
+    department: "Veterinary Care",
+    assignment: "Koramangala Clinic",
+    accountStatus: "active",
+  },
+  {
+    id: "emp-groomer-001",
+    displayName: "Saman M",
+    email: "saman.m@example.supertails.com",
+    role: "groomer",
+    roleLabel: roleDefinitions.groomer.label,
+    department: "Pet Services",
+    assignment: "Indiranagar Clinic",
+    accountStatus: "active",
+  },
+  {
+    id: "emp-central-001",
+    displayName: "Akshay Amrith",
+    email: "akshay.amrith@example.supertails.com",
+    role: "central-management",
+    roleLabel: roleDefinitions["central-management"].label,
+    department: "Central Operations",
+    assignment: "Bengaluru Headquarters",
+    accountStatus: "active",
+  },
+  {
+    id: "emp-admin-001",
+    displayName: "Aman Tekhriwal",
+    email: "aman.tekhriwal@example.supertails.com",
+    role: "system-administrator",
+    roleLabel: roleDefinitions["system-administrator"].label,
+    department: "Information Technology",
+    assignment: "Platform Operations",
+    accountStatus: "active",
+  },
+  {
+    id: "emp-god-001",
+    displayName: "Bark Super Admin",
+    email: "god@bark.local",
+    role: "god",
+    roleLabel: roleDefinitions.god.label,
+    department: "Platform Administration",
+    assignment: "Global Operations",
+    accountStatus: "active",
+  },
+];
+
+export function findEmployee(employeeId: string): Employee | undefined {
+  return mockEmployees.find((employee) => employee.id === employeeId);
+}

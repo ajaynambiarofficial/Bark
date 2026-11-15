@@ -1,0 +1,278 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-app: var(--app-background);
+  --color-sidebar: var(--sidebar-background);
+  --color-header: var(--header-background);
+  --color-surface: var(--surface-card);
+  --color-elevated: var(--surface-elevated);
+  --color-subtle: var(--surface-subtle);
+  --color-input: var(--input-background);
+  --color-hover: var(--state-hover);
+  --color-active: var(--state-active);
+  --color-disabled: var(--state-disabled);
+  --color-overlay: var(--overlay-background);
+
+  --color-primary: var(--text-primary);
+  --color-secondary: var(--text-secondary);
+  --color-muted: var(--text-muted);
+  --color-sidebar-muted: var(--text-sidebar-muted);
+  --color-disabled-text: var(--text-disabled);
+
+  --color-default: var(--border-default);
+  --color-input-hover: var(--border-input-hover);
+
+  --color-brand: var(--brand-primary);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-deep: var(--brand-deep);
+  --color-on-brand: var(--text-on-brand);
+  --color-focus: var(--focus-ring);
+  --color-focus-soft: var(--focus-ring-soft);
+
+  --color-success: var(--status-success);
+  --color-success-soft: var(--status-success-soft);
+  --color-warning: var(--status-warning);
+  --color-warning-soft: var(--status-warning-soft);
+  --color-error: var(--status-error);
+  --color-error-soft: var(--status-error-soft);
+  --color-error-border: var(--status-error-border);
+  --color-info: var(--status-info);
+  --color-info-soft: var(--status-info-soft);
+  --color-info-border: var(--status-info-border);
+}
+
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+
+  --app-background: #f6f5f0;
+  --sidebar-background: #f1f2ec;
+  --header-background: color-mix(in srgb, #f6f5f0 88%, transparent);
+  --surface-card: #fffefa;
+  --surface-elevated: #ffffff;
+  --surface-subtle: #f3f4ef;
+  --input-background: #fffefa;
+  --state-hover: #e9ede7;
+  --state-active: #e0f0e6;
+  --state-disabled: #dfe3dc;
+  --overlay-background: rgb(25 31 27 / 42%);
+
+  --text-primary: #202722;
+  --text-secondary: #536058;
+  --text-muted: #647067;
+  --text-sidebar-muted: #5e6962;
+  --text-disabled: #909991;
+
+  --border-default: #dfe3dc;
+  --border-input-hover: #b9c3ba;
+
+  /* Provisional Supertails-inspired green: see DESIGN.md. */
+  --brand-primary: #1f754d;
+  --brand-hover: #185f3e;
+  --brand-strong: #165b3b;
+  --brand-soft: #dff1e6;
+  --brand-deep: #173d2d;
+  --text-on-brand: #ffffff;
+  --focus-ring: #2c875b;
+  --focus-ring-soft: rgb(44 135 91 / 18%);
+  --brand-pattern: rgb(255 255 255 / 78%);
+
+  --status-success: #24724a;
+  --status-success-soft: #e2f3e8;
+  --status-warning: #946313;
+  --status-warning-soft: #fff1ce;
+  --status-error: #a03b3b;
+  --status-error-soft: #fbe8e6;
+  --status-error-border: #efc4c0;
+  --status-info: #376a86;
+  --status-info-soft: #e6f1f6;
+  --status-info-border: #bfd9e5;
+
+  --radius-sm: 8px;
+  --radius-control: 10px;
+  --radius-md: 12px;
+  --radius-lg: 14px;
+  --shadow-card: 0 1px 2px rgb(28 38 31 / 4%), 0 8px 24px rgb(28 38 31 / 4%);
+  --shadow-button: 0 1px 2px rgb(18 61 44 / 16%);
+  --shadow-menu: 0 16px 42px rgb(28 38 31 / 14%);
+  --shadow-drawer: 10px 0 36px rgb(28 38 31 / 15%);
+}
+
+[data-theme="dark"] {
+  --app-background: #191d1a;
+  --sidebar-background: #1d221e;
+  --header-background: color-mix(in srgb, #191d1a 88%, transparent);
+  --surface-card: #222823;
+  --surface-elevated: #292f2a;
+  --surface-subtle: #272d28;
+  --input-background: #202621;
+  --state-hover: #2d352f;
+  --state-active: #263d30;
+  --state-disabled: #303631;
+  --overlay-background: rgb(5 8 6 / 62%);
+
+  --text-primary: #edf1ec;
+  --text-secondary: #b8c1b9;
+  --text-muted: #919c93;
+  --text-sidebar-muted: #a7b0a8;
+  --text-disabled: #747d75;
+
+  --border-default: #353d37;
+  --border-input-hover: #536057;
+
+  --brand-primary: #72c995;
+  --brand-hover: #83d6a4;
+  --brand-strong: #8ddbac;
+  --brand-soft: #243c2e;
+  --brand-deep: #143728;
+  --text-on-brand: #12271b;
+  --focus-ring: #83d6a4;
+  --focus-ring-soft: rgb(131 214 164 / 18%);
+  --brand-pattern: rgb(255 255 255 / 68%);
+
+  --status-success: #87d4a6;
+  --status-success-soft: #243b2d;
+  --status-warning: #e4ba68;
+  --status-warning-soft: #3d3321;
+  --status-error: #ef9a94;
+  --status-error-soft: #432827;
+  --status-error-border: #71413e;
+  --status-info: #91c8df;
+  --status-info-soft: #243640;
+  --status-info-border: #3c5c6c;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 14%), 0 12px 30px rgb(0 0 0 / 10%);
+  --shadow-button: 0 1px 2px rgb(0 0 0 / 24%);
+  --shadow-menu: 0 18px 48px rgb(0 0 0 / 28%);
+  --shadow-drawer: 10px 0 38px rgb(0 0 0 / 30%);
+}
+
+:root[data-palette="ocean"] {
+  --state-active: #dff2f8;
+  --brand-primary: #1d6b87;
+  --brand-hover: #16566e;
+  --brand-strong: #124b61;
+  --brand-soft: #dff2f8;
+  --brand-deep: #173d4b;
+  --text-on-brand: #ffffff;
+  --focus-ring: #2b829f;
+  --focus-ring-soft: rgb(43 130 159 / 18%);
+}
+:root[data-theme="dark"][data-palette="ocean"] {
+  --state-active: #203943;
+  --brand-primary: #66c4df;
+  --brand-hover: #7ad0e8;
+  --brand-strong: #8bd7ec;
+  --brand-soft: #203943;
+  --brand-deep: #15333e;
+  --text-on-brand: #10252d;
+  --focus-ring: #7ad0e8;
+  --focus-ring-soft: rgb(122 208 232 / 18%);
+}
+
+:root[data-palette="violet"] {
+  --state-active: #ede8f8;
+  --brand-primary: #6952a3;
+  --brand-hover: #554184;
+  --brand-strong: #48356f;
+  --brand-soft: #ede8f8;
+  --brand-deep: #32264d;
+  --text-on-brand: #ffffff;
+  --focus-ring: #7861b1;
+  --focus-ring-soft: rgb(120 97 177 / 18%);
+}
+:root[data-theme="dark"][data-palette="violet"] {
+  --state-active: #342c46;
+  --brand-primary: #b5a3ee;
+  --brand-hover: #c1b2f2;
+  --brand-strong: #ccbef7;
+  --brand-soft: #342c46;
+  --brand-deep: #281f38;
+  --text-on-brand: #201a2c;
+  --focus-ring: #c1b2f2;
+  --focus-ring-soft: rgb(193 178 242 / 18%);
+}
+
+:root[data-palette="amber"] {
+  --state-active: #f9e7d8;
+  --brand-primary: #ad5b24;
+  --brand-hover: #914817;
+  --brand-strong: #783b12;
+  --brand-soft: #f9e7d8;
+  --brand-deep: #482b1a;
+  --text-on-brand: #ffffff;
+  --focus-ring: #b86632;
+  --focus-ring-soft: rgb(184 102 50 / 18%);
+}
+:root[data-theme="dark"][data-palette="amber"] {
+  --state-active: #453125;
+  --brand-primary: #f1a66f;
+  --brand-hover: #f6b887;
+  --brand-strong: #f8c69f;
+  --brand-soft: #453125;
+  --brand-deep: #35251b;
+  --text-on-brand: #2d1b10;
+  --focus-ring: #f6b887;
+  --focus-ring-soft: rgb(246 184 135 / 18%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  background: var(--app-background);
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: var(--app-background);
+  color: var(--text-primary);
+}
+
+button,
+select,
+input,
+textarea {
+  font: inherit;
+}
+
+button,
+a,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: var(--brand-soft);
+  color: var(--text-primary);
+}
+
+.brand-pattern {
+  background-image:
+    radial-gradient(circle at 18% 24%, var(--brand-pattern) 0 2px, transparent 2.5px),
+    radial-gradient(circle at 74% 58%, var(--brand-pattern) 0 1.5px, transparent 2px);
+  background-size: 64px 64px, 54px 54px;
+}
+
+@keyframes loading {
+  0%, 100% { transform: translateX(-70%); }
+  50% { transform: translateX(170%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

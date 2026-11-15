@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f6f5f0" />
+    <meta
+      name="description"
+      content="Bark by Supertails — clinic operations and escalations."
+    />
+    <script>
+      (function () {
+        try {
+          var preference = localStorage.getItem("bark.appearance") || "system";
+          var palette = localStorage.getItem("bark.color-theme") || "bark";
+          var resolved = preference === "system"
+            ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+            : preference;
+          document.documentElement.dataset.theme = resolved;
+          document.documentElement.dataset.palette = ["bark", "ocean", "violet", "amber"].includes(palette) ? palette : "bark";
+          document.documentElement.style.colorScheme = resolved;
+        } catch (_) {
+          document.documentElement.dataset.theme = "light";
+          document.documentElement.dataset.palette = "bark";
+          document.documentElement.style.colorScheme = "light";
+        }
+      })();
+    </script>
+    <title>Bark by Supertails</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

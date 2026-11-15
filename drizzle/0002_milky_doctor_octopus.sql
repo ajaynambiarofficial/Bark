@@ -1,0 +1,1 @@
+ALTER TABLE "escalations" ADD COLUMN "attachment_metadata" jsonb DEFAULT '[]'::jsonb NOT NULL;

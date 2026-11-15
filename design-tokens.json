@@ -1,0 +1,24 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "status": "provisional-brand-colors",
+  "light": {
+    "applicationBackground": "#f6f5f0",
+    "surfaceCard": "#fffefa",
+    "textPrimary": "#202722",
+    "textSecondary": "#536058",
+    "border": "#dfe3dc",
+    "brandPrimary": "#1f754d",
+    "brandSoft": "#dff1e6",
+    "focus": "#2c875b"
+  },
+  "dark": {
+    "applicationBackground": "#191d1a",
+    "surfaceCard": "#222823",
+    "textPrimary": "#edf1ec",
+    "textSecondary": "#b8c1b9",
+    "border": "#353d37",
+    "brandPrimary": "#72c995",
+    "brandSoft": "#243c2e",
+    "focus": "#83d6a4"
+  }
+}
