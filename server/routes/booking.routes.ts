@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { and, desc, eq, gt, ilike, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { z } from "zod";
+import { alias } from "drizzle-orm/pg-core";
 import { db } from "../db/client.js";
 import { bookingHistory, bookings, clinicServices, clinics, customerPets, customers, roles, services, users } from "../db/schema.js";
 import { requirePermission } from "../middleware/auth.js";
@@ -18,9 +19,10 @@ const listSchema = z.object({
 const customerSchema = z.object({ name: z.string().trim().min(2).max(160), phone: z.string().trim().min(7).max(30), email: z.string().trim().email().optional(), petName: z.string().trim().max(120).optional(), petSpecies: z.string().trim().max(80).optional() });
 const createSchema = z.object({ customerId: uuid.optional(), petId: uuid.optional(), customer: customerSchema.optional(), clinicId: uuid, serviceId: uuid, assignedStaffId: uuid.optional(), startsAt: z.coerce.date(), endsAt: z.coerce.date().optional(), notes: z.string().trim().max(2000).default(""), source: z.string().trim().max(60).default("bark") }).refine((value) => value.customerId || value.customer, { message: "Select a customer or enter their details.", path: ["customerId"] });
 const availabilitySchema = z.object({ clinicId: uuid, serviceId: uuid, date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) });
-const rescheduleSchema = z.object({ startsAt: z.coerce.date(), endsAt: z.coerce.date(), reason: z.string().trim().min(3).max(500) }).refine((value) => value.endsAt > value.startsAt, { message: "The end time must be after the start time.", path: ["endsAt"] });
+const rescheduleSchema = z.object({ startsAt: z.coerce.date(), endsAt: z.coerce.date(), assignedStaffId: uuid.nullable().optional(), reason: z.string().trim().min(3).max(500) }).refine((value) => value.endsAt > value.startsAt, { message: "The end time must be after the start time.", path: ["endsAt"] });
 const assignSchema = z.object({ assignedStaffId: uuid, reason: z.string().trim().min(3).max(500) });
 const cancelSchema = z.object({ reason: z.string().trim().min(3).max(500) });
+const statusSchema = z.object({ status: z.enum(["in_progress", "completed"]), reason: z.string().trim().min(3).max(500) });
 
 function bookingReference() {
   const date = new Date();
@@ -72,10 +74,13 @@ router.get("/availability", requirePermission("bookings:view"), async (request, 
 router.get("/", requirePermission("bookings:view"), async (request, response) => {
   const input = parseQuery(request, listSchema);
   const actor = request.auth!;
-  const access = actor.permissions.has("bookings:manage:any") ? undefined : or(eq(bookings.createdBy, actor.userId), ...(actor.clinicIds.length ? [inArray(bookings.clinicId, [...actor.clinicIds])] : []));
+  const access = actor.permissions.has("bookings:manage:any") || actor.permissions.has("bookings:cancel") ? undefined : or(eq(bookings.createdBy, actor.userId), ...(actor.clinicIds.length ? [inArray(bookings.clinicId, [...actor.clinicIds])] : []));
   const conditions = [isNull(bookings.deletedAt), ...(access ? [access] : []), ...(input.status ? [eq(bookings.status, input.status)] : []), ...(input.clinicId ? [eq(bookings.clinicId, input.clinicId)] : []), ...(input.from ? [gt(bookings.startsAt, input.from)] : []), ...(input.to ? [lt(bookings.startsAt, input.to)] : []), ...(input.search ? [or(ilike(bookings.reference, `%${input.search}%`), ilike(customers.name, `%${input.search}%`), ilike(customers.phone, `%${input.search}%`))!] : [])];
-  const records = await db.select({ booking: bookings, customer: { id: customers.id, name: customers.name, phone: customers.phone, petName: customers.petName }, clinic: { id: clinics.id, name: clinics.name }, service: { id: services.id, name: services.name }, staff: { id: users.id, displayName: users.displayName, role: roles.name } })
-    .from(bookings).innerJoin(customers, eq(bookings.customerId, customers.id)).innerJoin(clinics, eq(bookings.clinicId, clinics.id)).innerJoin(services, eq(bookings.serviceId, services.id)).leftJoin(users, eq(bookings.assignedStaffId, users.id)).leftJoin(roles, eq(users.roleId, roles.id))
+  const creator = alias(users, "booking_creator");
+  const cancellationHistory = alias(bookingHistory, "cancellation_history");
+  const canceller = alias(users, "booking_canceller");
+  const records = await db.select({ booking: bookings, customer: { id: customers.id, name: customers.name, phone: customers.phone, petName: customers.petName }, clinic: { id: clinics.id, name: clinics.name }, service: { id: services.id, name: services.name }, staff: { id: users.id, displayName: users.displayName, role: roles.name }, createdBy: { id: creator.id, displayName: creator.displayName, email: creator.email }, cancelledBy: { id: canceller.id, displayName: canceller.displayName, email: canceller.email } })
+    .from(bookings).innerJoin(customers, eq(bookings.customerId, customers.id)).innerJoin(clinics, eq(bookings.clinicId, clinics.id)).innerJoin(services, eq(bookings.serviceId, services.id)).leftJoin(users, eq(bookings.assignedStaffId, users.id)).leftJoin(roles, eq(users.roleId, roles.id)).leftJoin(creator, eq(bookings.createdBy, creator.id)).leftJoin(cancellationHistory, and(eq(cancellationHistory.bookingId, bookings.id), eq(cancellationHistory.action, "cancelled"))).leftJoin(canceller, eq(cancellationHistory.actorId, canceller.id))
     .where(and(...conditions)).orderBy(desc(bookings.startsAt)).limit(input.limit).offset(input.offset);
   response.json({ data: records, meta: { limit: input.limit, offset: input.offset, returned: records.length } });
 });
@@ -127,12 +132,13 @@ router.post("/:id/reschedule", requirePermission("bookings:update"), async (requ
   const input = parseBody(request, rescheduleSchema);
   const actor = request.auth!;
   const current = await requireBookingAccess(id, actor);
-  await assertAvailable(current.assignedStaffId, input.startsAt, input.endsAt, id);
+  const assignedStaffId = input.assignedStaffId === undefined ? current.assignedStaffId : input.assignedStaffId;
+  if (assignedStaffId) await assertAvailable(assignedStaffId, input.startsAt, input.endsAt, id);
   const [updated] = await db.transaction(async (transaction) => {
-    const records = await transaction.update(bookings).set({ startsAt: input.startsAt, endsAt: input.endsAt, updatedBy: actor.userId, updatedAt: new Date() }).where(eq(bookings.id, id)).returning();
+    const records = await transaction.update(bookings).set({ startsAt: input.startsAt, endsAt: input.endsAt, assignedStaffId, updatedBy: actor.userId, updatedAt: new Date() }).where(eq(bookings.id, id)).returning();
     const next = records[0]!;
-    const before = { startsAt: current.startsAt.toISOString(), endsAt: current.endsAt.toISOString() };
-    const after = { startsAt: next.startsAt.toISOString(), endsAt: next.endsAt.toISOString() };
+    const before = { startsAt: current.startsAt.toISOString(), endsAt: current.endsAt.toISOString(), assignedStaffId: current.assignedStaffId };
+    const after = { startsAt: next.startsAt.toISOString(), endsAt: next.endsAt.toISOString(), assignedStaffId: next.assignedStaffId };
     await transaction.insert(bookingHistory).values({ bookingId: id, actorId: actor.userId, action: "rescheduled", previousValue: before, newValue: after, reason: input.reason });
     await appendAudit(transaction, { actor, action: "booking.rescheduled", entityType: "booking", entityId: id, previousValue: before, newValue: after, reason: input.reason, requestId: request.requestId, ipAddress: request.ip });
     return records;
@@ -159,12 +165,29 @@ router.post("/:id/cancel", requirePermission("bookings:cancel"), async (request,
   const id = uuid.parse(request.params.id);
   const input = parseBody(request, cancelSchema);
   const actor = request.auth!;
-  const current = await requireBookingAccess(id, actor);
+  const [current] = await db.select().from(bookings).where(and(eq(bookings.id, id), isNull(bookings.deletedAt))).limit(1);
+  if (!current) throw new ApiError(404, "BOOKING_NOT_FOUND", "The booking was not found.");
   if (["cancelled", "completed"].includes(current.status)) throw new ApiError(409, "BOOKING_STATUS_INVALID", `A ${current.status} booking cannot be cancelled.`);
   const [updated] = await db.transaction(async (transaction) => {
     const records = await transaction.update(bookings).set({ status: "cancelled", cancellationReason: input.reason, cancelledAt: new Date(), updatedBy: actor.userId, updatedAt: new Date() }).where(eq(bookings.id, id)).returning();
     await transaction.insert(bookingHistory).values({ bookingId: id, actorId: actor.userId, action: "cancelled", previousValue: { status: current.status }, newValue: { status: "cancelled" }, reason: input.reason });
     await appendAudit(transaction, { actor, action: "booking.cancelled", entityType: "booking", entityId: id, previousValue: { status: current.status }, newValue: { status: "cancelled" }, reason: input.reason, requestId: request.requestId, ipAddress: request.ip });
+    return records;
+  });
+  response.json({ data: updated });
+});
+
+router.patch("/:id/status", requirePermission("bookings:status:update"), async (request, response) => {
+  const id = uuid.parse(request.params.id);
+  const input = parseBody(request, statusSchema);
+  const actor = request.auth!;
+  const current = await requireBookingAccess(id, actor);
+  if (!["pending", "confirmed", "checked_in", "in_progress"].includes(current.status)) throw new ApiError(409, "BOOKING_STATUS_INVALID", `A ${current.status} booking cannot be marked ${input.status.replaceAll("_", " ")}.`);
+  if (current.status === input.status) throw new ApiError(409, "BOOKING_STATUS_UNCHANGED", "The appointment already has this status.");
+  const [updated] = await db.transaction(async (transaction) => {
+    const records = await transaction.update(bookings).set({ status: input.status, updatedBy: actor.userId, updatedAt: new Date() }).where(eq(bookings.id, id)).returning();
+    await transaction.insert(bookingHistory).values({ bookingId: id, actorId: actor.userId, action: input.status, previousValue: { status: current.status }, newValue: { status: input.status }, reason: input.reason });
+    await appendAudit(transaction, { actor, action: `booking.${input.status}`, entityType: "booking", entityId: id, previousValue: { status: current.status }, newValue: { status: input.status }, reason: input.reason, requestId: request.requestId, ipAddress: request.ip });
     return records;
   });
   response.json({ data: updated });

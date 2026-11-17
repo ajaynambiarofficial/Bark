@@ -12,6 +12,12 @@ const schema = z.object({
   ALLOW_LOCAL_PASSWORD_RESET_LINKS: z.enum(["true", "false"]).default("false"),
   TRUST_PROXY: z.enum(["true", "false"]).default("false"),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
+  SMTP_HOST: z.string().min(1).optional(),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(465),
+  SMTP_SECURE: z.enum(["true", "false"]).default("true"),
+  SMTP_USER: z.string().email().optional(),
+  SMTP_PASSWORD: z.string().min(1).optional(),
+  EMAIL_FROM: z.string().email().optional(),
   GOD_EMAIL: z.string().email().optional(),
   GOD_PASSWORD: z.string().min(14).optional(),
   LOCAL_AGENT_EMAIL: z.string().email().optional(),
@@ -34,4 +40,5 @@ export const env = {
   databaseSsl: parsed.data.DATABASE_SSL ? parsed.data.DATABASE_SSL === "true" : parsed.data.NODE_ENV === "production",
   allowLocalPasswordResetLinks: parsed.data.ALLOW_LOCAL_PASSWORD_RESET_LINKS === "true" && ["localhost", "127.0.0.1"].includes(new URL(parsed.data.APP_ORIGIN).hostname),
   isProduction: parsed.data.NODE_ENV === "production",
+  emailConfigured: Boolean(parsed.data.SMTP_HOST && parsed.data.SMTP_USER && parsed.data.SMTP_PASSWORD && parsed.data.EMAIL_FROM),
 };

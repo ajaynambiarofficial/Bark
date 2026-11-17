@@ -2,7 +2,7 @@ import { Router } from "express";
 import { and, desc, eq, ilike, inArray, isNull, or } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/client.js";
-import { bookings, clinics, customerHealthRecords, customerOrders, customerPets, customers, services } from "../db/schema.js";
+import { bookings, clinics, customerHealthRecords, customerOrders, customerPackages, customerPets, customers, services } from "../db/schema.js";
 import { requirePermission } from "../middleware/auth.js";
 import { ApiError } from "../lib/errors.js";
 import { parseBody, parseQuery } from "../lib/validation.js";
@@ -58,9 +58,10 @@ router.get("/:id/profile", requirePermission("bookings:view"), async (request, r
   const customerRows = await db.select({ booking: bookings, clinic: { id: clinics.id, name: clinics.name }, service: { id: services.id, name: services.name } })
     .from(bookings).innerJoin(clinics, eq(bookings.clinicId, clinics.id)).innerJoin(services, eq(bookings.serviceId, services.id))
     .where(and(eq(bookings.customerId, customerId), isNull(bookings.deletedAt), ...(scope ? [scope] : []))).orderBy(desc(bookings.startsAt));
-  const [petRows, orderRows] = await Promise.all([
+  const [petRows, orderRows, packageRows] = await Promise.all([
     db.select().from(customerPets).where(eq(customerPets.customerId, customerId)).orderBy(customerPets.createdAt),
     db.select().from(customerOrders).where(eq(customerOrders.customerId, customerId)).orderBy(desc(customerOrders.orderedAt)),
+    db.select().from(customerPackages).where(eq(customerPackages.customerId, customerId)).orderBy(desc(customerPackages.activeFrom)),
   ]);
   const healthRows = petRows.length
     ? await db.select().from(customerHealthRecords).where(inArray(customerHealthRecords.petId, petRows.map((pet) => pet.id))).orderBy(desc(customerHealthRecords.recordedAt))
@@ -70,6 +71,7 @@ router.get("/:id/profile", requirePermission("bookings:view"), async (request, r
     customer: { id: customer.id, name: customer.name, email: customer.email, phone: customer.phone, petName: customer.petName, petSpecies: customer.petSpecies },
     pets: petRows.length ? petRows.map((pet) => ({ id: pet.id, name: pet.name, species: pet.species, breed: pet.breed, size: pet.size, coatType: pet.coatType, sex: pet.sex, reproductiveStatus: pet.reproductiveStatus, age: pet.birthDate ? `${Math.max(0, new Date().getFullYear() - pet.birthDate.getFullYear())} years old` : null, status: pet.status, vaccinationStatus: healthRows.some((record) => record.petId === pet.id && record.recordType.toLowerCase() === "vaccination" && record.status === "active") ? "Up to date" : "Not recorded" })) : customer.petName ? [{ id: `${customer.id}-pet`, name: customer.petName, species: customer.petSpecies ?? "Pet", age: null, status: "active", vaccinationStatus: "Not recorded" }] : [],
     orderHistory: orderRows.map((order) => ({ id: order.orderNumber, date: order.orderedAt, title: order.title, amount: order.amount, status: order.status })),
+    activePackages: packageRows.filter((item) => item.status === "active" && item.remainingUses > 0 && (!item.activeUntil || item.activeUntil > new Date())).map((item) => ({ id: item.id, name: item.packageName, status: item.status, totalUses: item.totalUses, remainingUses: item.remainingUses, activeFrom: item.activeFrom, activeUntil: item.activeUntil })),
     appointments,
     healthRecords: healthRows.map((record) => ({ id: record.id, type: record.recordType, title: record.title, status: record.status, date: record.recordedAt })),
   } });

@@ -8,6 +8,7 @@ import { requirePermission } from "../middleware/auth.js";
 import { ApiError } from "../lib/errors.js";
 import { parseBody, parseQuery } from "../lib/validation.js";
 import { appendAudit } from "../services/audit.service.js";
+import { sendEscalationUpdateEmail } from "../services/escalation-email.service.js";
 import type { AuthPrincipal } from "../auth/types.js";
 
 const router = Router();
@@ -99,6 +100,7 @@ router.post("/", requirePermission("escalations:create"), async (request, respon
     await appendAudit(transaction, { actor, action: "escalation.created", entityType: "escalation", entityId: record.id, newValue: { reference: record.reference, category: record.category, ownerId: owner.id, status: record.status, priority: record.priority, tier: record.tier }, requestId: request.requestId, ipAddress: request.ip });
     return record;
   });
+  void sendEscalationUpdateEmail(created.id, "New escalation assigned");
   response.status(201).json({ data: created });
 });
 
@@ -145,6 +147,7 @@ router.post("/:id/status", requirePermission("escalations:comment"), async (requ
     await appendAudit(transaction, { actor, action: "escalation.status_changed", entityType: "escalation", entityId: id, previousValue: { status: current.status }, newValue: { status: input.status }, reason: input.reason, requestId: request.requestId, ipAddress: request.ip });
     return records;
   });
+  void sendEscalationUpdateEmail(id, `Status changed to ${input.status}`);
   response.json({ data: updated });
 });
 
@@ -163,6 +166,7 @@ router.post("/:id/assign", requirePermission("escalations:assign"), async (reque
     await appendAudit(transaction, { actor, action: "escalation.assigned", entityType: "escalation", entityId: id, previousValue: { ownerId: current.ownerId }, newValue: { ownerId: owner.id }, reason: input.reason, requestId: request.requestId, ipAddress: request.ip });
     return records;
   });
+  void sendEscalationUpdateEmail(id, "Escalation owner changed");
   response.json({ data: updated });
 });
 
@@ -180,6 +184,7 @@ router.post("/:id/tier", requirePermission("escalations:tier:2"), async (request
     await appendAudit(transaction, { actor, action: "escalation.tier_increased", entityType: "escalation", entityId: id, previousValue: { tier: current.tier }, newValue: { tier: input.tier }, reason: input.reason, requestId: request.requestId, ipAddress: request.ip });
     return records;
   });
+  void sendEscalationUpdateEmail(id, `Escalation tier increased to ${input.tier}`);
   response.json({ data: updated });
 });
 

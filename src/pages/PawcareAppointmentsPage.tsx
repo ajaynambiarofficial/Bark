@@ -5,13 +5,13 @@ import { Card } from "../components/ui/Card";
 import { PageHeader } from "../components/ui/PageHeader";
 
 interface Clinic { id: string; name: string }
-interface Appointment { booking: { id: string; reference: string; status: string; startsAt: string; endsAt: string }; customer: { id: string; name: string; phone: string; petName: string | null }; clinic: Clinic; service: { id: string; name: string }; staff: { id: string | null; displayName: string | null; role: string | null } | null }
+interface Appointment { booking: { id: string; reference: string; status: string; startsAt: string; endsAt: string; notes?: string }; createdBy?: { id: string; displayName: string; email: string } | null; customer: { id: string; name: string; phone: string; petName: string | null }; clinic: Clinic; service: { id: string; name: string }; staff: { id: string | null; displayName: string | null; role: string | null } | null }
 const apiBase = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ?? "/api";
 const mockMode = import.meta.env.VITE_USE_MOCK_AUTH === "true";
 const demoClinic: Clinic = { id: "demo-indiranagar", name: "Indiranagar Clinic" };
 
-async function api<T>(path: string): Promise<T> {
-  const response = await fetch(`${apiBase}${path}`, { credentials: "include" });
+async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${apiBase}${path}`, { ...init, credentials: "include", headers: { "content-type": "application/json", ...init?.headers } });
   const body = await response.json().catch(() => null) as { data?: T; error?: { message?: string } } | null;
   if (!response.ok) throw new Error(body?.error?.message ?? "Could not load appointments.");
   return body?.data as T;
@@ -42,13 +42,17 @@ export function PawcareAppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Appointment | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [rescheduling, setRescheduling] = useState(false);
   const selectedClinic = clinics.find((clinic) => clinic.id === clinicId);
   const grouped = useMemo(() => {
-    const map = new Map<string, { name: string; role: string; appointments: Appointment[] }>();
+    const map = new Map<string, { id: string | null; name: string; role: string; appointments: Appointment[] }>();
     for (const appointment of appointments) {
       const name = appointment.staff?.displayName ?? "Unassigned";
       const role = appointment.staff?.role ?? "Provider";
-      const current = map.get(name) ?? { name, role, appointments: [] };
+      const id = appointment.staff?.id ?? null;
+      const current = map.get(id ?? name) ?? { id, name, role, appointments: [] };
       current.appointments.push(appointment);
       map.set(name, current);
     }
@@ -72,7 +76,32 @@ export function PawcareAppointmentsPage() {
       finally { if (active) setLoading(false); }
     };
     void load(); return () => { active = false; };
-  }, [viewDate, clinicId]);
+  }, [viewDate, clinicId, refreshKey]);
+
+  const reschedule = async (appointment: Appointment, startsAt: Date, assignedStaffId: string | null) => {
+    if (mockMode) { setError("Rescheduling requires the connected backend."); return; }
+    const reason = window.prompt(`Reason for rescheduling ${appointment.booking.reference}:`);
+    if (!reason || reason.trim().length < 3) return;
+    setRescheduling(true); setError(null);
+    try {
+      const duration = new Date(appointment.booking.endsAt).getTime() - new Date(appointment.booking.startsAt).getTime();
+      await api(`/bookings/${appointment.booking.id}/reschedule`, { method: "POST", body: JSON.stringify({ startsAt: startsAt.toISOString(), endsAt: new Date(startsAt.getTime() + duration).toISOString(), assignedStaffId, reason }) });
+      setRefreshKey((key) => key + 1);
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "Could not reschedule appointment."); }
+    finally { setRescheduling(false); }
+  };
+
+  const updateStatus = async (appointment: Appointment, status: "in_progress" | "completed" | "cancelled") => {
+    const reason = window.prompt(`Reason for marking ${appointment.booking.reference} as ${status.replaceAll("_", " ")}:`);
+    if (!reason || reason.trim().length < 3) return;
+    setRescheduling(true); setError(null);
+    try {
+      if (status === "cancelled") await api(`/bookings/${appointment.booking.id}/cancel`, { method: "POST", body: JSON.stringify({ reason }) });
+      else await api(`/bookings/${appointment.booking.id}/status`, { method: "PATCH", body: JSON.stringify({ status, reason }) });
+      setSelected(null); setRefreshKey((key) => key + 1);
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "Could not update appointment status."); }
+    finally { setRescheduling(false); }
+  };
 
   const moveDate = (days: number) => setViewDate((current) => new Date(current.getFullYear(), current.getMonth(), current.getDate() + days));
   const today = new Date();
@@ -80,21 +109,36 @@ export function PawcareAppointmentsPage() {
     <PageHeader eyebrow="Pawcare" title="Appointments" description="View the day’s schedule across doctors and groomers, with attendance outcomes." action={<label className="flex min-h-10 items-center gap-2 rounded-lg border border-default bg-elevated px-3 text-sm text-primary"><MapPin size={15} className="text-brand" /><span className="sr-only">Select clinic</span><select value={clinicId} onChange={(event) => setClinicId(event.target.value)} className="max-w-[190px] bg-transparent font-semibold outline-none"><option value="">All clinics</option>{clinics.map((clinic) => <option key={clinic.id} value={clinic.id}>{clinic.name}</option>)}</select></label>} />
     {error && <p role="alert" className="rounded-lg border border-error-border bg-error-soft p-3 text-sm text-error">{error}</p>}
     <Card className="p-4 sm:p-5"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-2"><Button variant="secondary" className="size-10 px-0" aria-label="Previous day" onClick={() => moveDate(-1)}><ArrowLeft size={17} /></Button><Button variant="secondary" className="size-10 px-0" aria-label="Next day" onClick={() => moveDate(1)}><ArrowRight size={17} /></Button><div className="ml-2"><p className="text-xs font-semibold uppercase tracking-wide text-brand-strong">Daily schedule</p><h2 className="text-lg font-semibold text-primary">{dateLabel(viewDate)}</h2></div></div><div className="flex items-center gap-2"><input type="date" value={dateKey(viewDate)} onChange={(event) => { const next = new Date(`${event.target.value}T12:00:00`); if (!Number.isNaN(next.getTime())) setViewDate(next); }} className="min-h-10 rounded-lg border border-input bg-input px-3 text-sm text-primary" /><Button variant="ghost" disabled={dateKey(today) === dateKey(viewDate)} onClick={() => setViewDate(today)}>Today</Button></div></div><div className="mt-4 flex flex-wrap items-center gap-3 border-t border-default pt-4 text-xs text-muted"><span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full bg-info" />Upcoming</span><span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full bg-success" />Showed up</span><span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full bg-error" />Did not show</span>{selectedClinic && <span className="ml-auto inline-flex items-center gap-1.5 font-medium text-secondary"><MapPin size={13} />{selectedClinic.name}</span>}</div></Card>
-    {loading ? <div className="h-[520px] animate-pulse rounded-xl bg-subtle" /> : grouped.length ? <DailyTimeline providers={grouped} /> : <Card className="p-10 text-center"><CalendarDays size={28} className="mx-auto text-muted" /><p className="mt-3 text-sm font-semibold text-primary">No appointments for this day</p><p className="mt-1 text-xs text-muted">Try another date or switch clinics.</p></Card>}
+    {!mockMode && <p className="text-xs text-muted">Drag an upcoming appointment to another time or provider to reschedule it. Select an appointment to see its details.</p>}
+    {loading ? <div className="h-[520px] animate-pulse rounded-xl bg-subtle" /> : grouped.length ? <DailyTimeline providers={grouped} onSelect={setSelected} onReschedule={(appointment, startsAt, staffId) => void reschedule(appointment, startsAt, staffId)} disabled={rescheduling || mockMode} date={viewDate} /> : <Card className="p-10 text-center"><CalendarDays size={28} className="mx-auto text-muted" /><p className="mt-3 text-sm font-semibold text-primary">No appointments for this day</p><p className="mt-1 text-xs text-muted">Try another date or switch clinics.</p></Card>}
+    {selected && <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }}><Card role="dialog" aria-modal="true" aria-labelledby="appointment-detail-title" className="w-full max-w-lg p-5"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-wide text-brand">Appointment details</p><h2 id="appointment-detail-title" className="mt-1 text-xl font-semibold text-primary">{selected.booking.reference}</h2></div><Button variant="ghost" onClick={() => setSelected(null)}>Close</Button></div><dl className="mt-5 grid grid-cols-2 gap-4 text-sm"><Detail label="Customer" value={selected.customer.name} /><Detail label="Phone" value={selected.customer.phone} /><Detail label="Pet" value={selected.customer.petName ?? "Not recorded"} /><Detail label="Service" value={selected.service.name} /><Detail label="Clinic" value={selected.clinic.name} /><Detail label="Provider" value={selected.staff?.displayName ?? "Unassigned"} /><Detail label="Date and time" value={new Date(selected.booking.startsAt).toLocaleString()} /><Detail label="Status" value={selected.booking.status.replaceAll("_", " ")} /><Detail label="Created by" value={selected.createdBy?.displayName ?? "Not recorded"} /><div className="col-span-2"><dt className="text-xs text-muted">Notes</dt><dd className="mt-1 text-primary">{selected.booking.notes || "No notes"}</dd></div></dl>{!["completed", "cancelled", "canceled"].includes(selected.booking.status.toLowerCase()) && <div className="mt-6 flex flex-wrap justify-end gap-2 border-t border-default pt-4"><Button variant="secondary" disabled={rescheduling} onClick={() => void updateStatus(selected, "in_progress")}>Mark in progress</Button><Button variant="secondary" disabled={rescheduling} onClick={() => void updateStatus(selected, "completed")}>Mark completed</Button><Button variant="secondary" disabled={rescheduling} onClick={() => void updateStatus(selected, "cancelled")}>Cancel appointment</Button></div>}</Card></div>}
     <Card className="overflow-hidden"><div className="flex items-center justify-between gap-3 border-b border-default px-5 py-4"><div><h2 className="text-base font-semibold text-primary">Daily appointment list</h2><p className="mt-1 text-xs text-muted">All providers in one place for {dateLabel(viewDate)}.</p></div><span className="text-xs font-semibold text-muted">{appointments.length} records</span></div>{appointments.length ? <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead className="bg-subtle text-xs uppercase text-muted"><tr><th className="p-4">Time</th><th className="p-4">Provider</th><th className="p-4">Customer / Pet</th><th className="p-4">Service</th><th className="p-4">Attendance</th></tr></thead><tbody>{appointments.slice().sort((a, b) => a.booking.startsAt.localeCompare(b.booking.startsAt)).map((appointment) => <tr key={appointment.booking.id} className="border-t border-default"><td className="p-4 whitespace-nowrap">{new Date(appointment.booking.startsAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td><td className="p-4"><p className="font-semibold text-primary">{appointment.staff?.displayName ?? "Unassigned"}</p><p className="text-xs text-muted">{appointment.staff?.role ?? "Provider"}</p></td><td className="p-4"><p>{appointment.customer.name}</p><p className="text-xs text-muted">{appointment.customer.petName ?? "Pet not recorded"}</p></td><td className="p-4">{appointment.service.name}</td><td className="p-4"><Attendance status={appointment.booking.status} startsAt={appointment.booking.startsAt} /></td></tr>)}</tbody></table></div> : <p className="p-8 text-center text-sm text-muted">No appointments found.</p>}</Card>
     <p className="text-xs leading-5 text-muted">Attendance is derived from booking status: completed, check-in, and in-progress records count as attended; no-show records count as did not show; unresolved past bookings remain unrecorded.</p>
   </div>;
 }
 
 function Attendance({ status, startsAt }: { status: string; startsAt: string }) { const result = attendance(status, startsAt); const Icon = result.icon; return <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${result.tone}`}><Icon size={13} />{result.label}</span>; }
-function DailyTimeline({ providers }: { providers: Array<{ name: string; role: string; appointments: Appointment[] }> }) {
+function Detail({ label, value }: { label: string; value: string }) { return <div><dt className="text-xs text-muted">{label}</dt><dd className="mt-1 font-medium capitalize text-primary">{value}</dd></div>; }
+function DailyTimeline({ providers, onSelect, onReschedule, disabled, date }: { providers: Array<{ id: string | null; name: string; role: string; appointments: Appointment[] }>; onSelect: (appointment: Appointment) => void; onReschedule: (appointment: Appointment, startsAt: Date, staffId: string | null) => void; disabled: boolean; date: Date }) {
   const startHour = 8;
   const endHour = 20;
   const hours = Array.from({ length: endHour - startHour + 1 }, (_, index) => startHour + index);
   const rowHeight = 72;
-  return <Card className="overflow-hidden"><div className="overflow-x-auto"><div className="min-w-[760px]"><div className="grid border-b border-default bg-subtle/50" style={{ gridTemplateColumns: `72px repeat(${providers.length}, minmax(190px, 1fr))` }}><div className="border-r border-default p-3 text-[10px] font-semibold uppercase tracking-wide text-muted">Time</div>{providers.map((provider) => <div key={provider.name} className="border-r border-default p-3"><div className="flex items-center gap-2"><span className="grid size-8 place-items-center rounded-full bg-brand-soft text-brand-strong">{provider.role.toLowerCase().includes("groom") ? <PawPrint size={15} /> : <Stethoscope size={15} />}</span><div className="min-w-0"><p className="truncate text-xs font-semibold text-primary">{provider.name}</p><p className="text-[10px] text-muted">{provider.role}</p></div></div></div>)}</div><div className="relative grid" style={{ gridTemplateColumns: `72px repeat(${providers.length}, minmax(190px, 1fr))` }}><div className="border-r border-default">{hours.map((hour) => <div key={hour} className="border-b border-default px-3 pt-2 text-[11px] font-medium tabular-nums text-muted" style={{ height: rowHeight }}>{`${String(hour).padStart(2, "0")}:00`}</div>)}</div>{providers.map((provider) => <div key={provider.name} className="relative border-r border-default">{hours.map((hour) => <div key={hour} className="border-b border-default" style={{ height: rowHeight }} />)}{provider.appointments.map((appointment) => <TimelineAppointment key={appointment.booking.id} appointment={appointment} startHour={startHour} rowHeight={rowHeight} />)}</div>)}</div></div></div><p className="border-t border-default px-4 py-3 text-xs text-muted">Daily provider view · Scroll horizontally to see all doctors and groomers.</p></Card>;
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>, provider: typeof providers[number], hour: number) => {
+    event.preventDefault();
+    const id = event.dataTransfer.getData("text/appointment-id");
+    const appointment = providers.flatMap((item) => item.appointments).find((item) => item.booking.id === id);
+    if (!appointment || ["completed", "cancelled", "canceled", "no_show", "noshow"].includes(appointment.booking.status.toLowerCase())) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const minutes = Math.min(45, Math.floor(((event.clientY - bounds.top) / rowHeight) * 60 / 15) * 15);
+    const startsAt = new Date(date); startsAt.setHours(hour, minutes, 0, 0);
+    if (startsAt.toISOString() === appointment.booking.startsAt && provider.id === (appointment.staff?.id ?? null)) return;
+    onReschedule(appointment, startsAt, provider.id);
+  };
+  return <Card className="overflow-hidden"><div className="overflow-x-auto"><div className="min-w-[760px]"><div className="grid border-b border-default bg-subtle/50" style={{ gridTemplateColumns: `72px repeat(${providers.length}, minmax(190px, 1fr))` }}><div className="border-r border-default p-3 text-[10px] font-semibold uppercase tracking-wide text-muted">Time</div>{providers.map((provider) => <div key={provider.id ?? provider.name} className="border-r border-default p-3"><div className="flex items-center gap-2"><span className="grid size-8 place-items-center rounded-full bg-brand-soft text-brand-strong">{provider.role.toLowerCase().includes("groom") ? <PawPrint size={15} /> : <Stethoscope size={15} />}</span><div className="min-w-0"><p className="truncate text-xs font-semibold text-primary">{provider.name}</p><p className="text-[10px] text-muted">{provider.role}</p></div></div></div>)}</div><div className="relative grid" style={{ gridTemplateColumns: `72px repeat(${providers.length}, minmax(190px, 1fr))` }}><div className="border-r border-default">{hours.map((hour) => <div key={hour} className="border-b border-default px-3 pt-2 text-[11px] font-medium tabular-nums text-muted" style={{ height: rowHeight }}>{`${String(hour).padStart(2, "0")}:00`}</div>)}</div>{providers.map((provider) => <div key={provider.id ?? provider.name} className="relative border-r border-default">{hours.map((hour) => <div key={hour} onDragOver={(event) => { if (!disabled) event.preventDefault(); }} onDrop={(event) => !disabled && handleDrop(event, provider, hour)} className="border-b border-default hover:bg-brand-soft/30" style={{ height: rowHeight }} aria-label={`Drop appointment at ${hour}:00 for ${provider.name}`} />)}{provider.appointments.map((appointment) => <TimelineAppointment key={appointment.booking.id} appointment={appointment} startHour={startHour} rowHeight={rowHeight} disabled={disabled} onSelect={onSelect} />)}</div>)}</div></div></div><p className="border-t border-default px-4 py-3 text-xs text-muted">Drag an upcoming appointment to another provider or time slot. Click any appointment for details.</p></Card>;
 }
-function TimelineAppointment({ appointment, startHour, rowHeight }: { appointment: Appointment; startHour: number; rowHeight: number }) {
+function TimelineAppointment({ appointment, startHour, rowHeight, disabled, onSelect }: { appointment: Appointment; startHour: number; rowHeight: number; disabled: boolean; onSelect: (appointment: Appointment) => void }) {
   const start = new Date(appointment.booking.startsAt); const end = new Date(appointment.booking.endsAt); const top = Math.max(0, ((start.getHours() + start.getMinutes() / 60) - startHour) * rowHeight); const height = Math.max(48, ((end.getTime() - start.getTime()) / 3_600_000) * rowHeight - 8); const result = attendance(appointment.booking.status, appointment.booking.startsAt);
-  return <div className="absolute left-1 right-1 overflow-hidden rounded-lg border border-info-border bg-info-soft p-2 shadow-sm" style={{ top, height }} title={`${appointment.customer.name} · ${appointment.service.name}`}><p className="truncate text-[11px] font-bold text-info">{start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · {appointment.customer.name}</p><p className="mt-1 truncate text-[10px] text-secondary">{appointment.customer.petName ?? "Pet"} · {appointment.service.name}</p><span className={`mt-1 inline-flex rounded px-1.5 py-0.5 text-[9px] font-semibold ${result.tone}`}>{result.label}</span></div>;
+  const draggable = !disabled && ["pending", "confirmed"].includes(appointment.booking.status.toLowerCase());
+  return <button type="button" draggable={draggable} onDragStart={(event) => { event.dataTransfer.setData("text/appointment-id", appointment.booking.id); event.dataTransfer.effectAllowed = "move"; }} onClick={() => onSelect(appointment)} className="absolute left-1 right-1 overflow-hidden rounded-lg border border-info-border bg-info-soft p-2 text-left shadow-sm hover:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" style={{ top, height }} title={`${appointment.customer.name} · ${appointment.service.name}${draggable ? " · Drag to reschedule" : ""}`}><p className="truncate text-[11px] font-bold text-info">{start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · {appointment.customer.name}</p><p className="mt-1 truncate text-[10px] text-secondary">{appointment.customer.petName ?? "Pet"} · {appointment.service.name}</p><span className={`mt-1 inline-flex rounded px-1.5 py-0.5 text-[9px] font-semibold ${result.tone}`}>{result.label}</span></button>;
 }

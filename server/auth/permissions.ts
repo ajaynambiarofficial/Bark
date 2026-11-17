@@ -1,6 +1,6 @@
 export const PERMISSIONS = [
   "dashboard:view:self", "dashboard:view:team", "dashboard:view:global",
-  "bookings:view", "bookings:create", "bookings:update", "bookings:cancel", "bookings:manage:any",
+  "bookings:view", "bookings:create", "bookings:update", "bookings:status:update", "bookings:cancel", "bookings:manage:any",
   "escalations:view", "escalations:create", "escalations:comment", "escalations:assign", "escalations:tier:2", "escalations:tier:3", "escalations:close", "escalations:manage:any",
   "calendar:view", "calendar:manage",
   "clinics:view", "clinics:manage", "services:view", "services:manage",
@@ -23,17 +23,17 @@ export const BUILT_IN_ROLES = {
   god: { name: "GOD / Super Admin", clearance: 100 },
 } as const;
 
-const common = ["dashboard:view:self", "bookings:view", "escalations:view", "escalations:comment", "calendar:view", "clinics:view", "services:view"];
+const common = ["dashboard:view:self", "bookings:view", "bookings:status:update", "bookings:cancel", "escalations:view", "escalations:comment", "calendar:view", "clinics:view", "services:view"];
 
 export const BUILT_IN_ROLE_PERMISSIONS: Record<keyof typeof BUILT_IN_ROLES, readonly string[]> = {
   "sales-agent": [...common, "bookings:create", "escalations:create"],
   "clinic-front-desk": [...common, "bookings:create", "bookings:update", "escalations:create"],
   doctor: common,
   groomer: [...common, "escalations:create"],
-  "sales-team-lead": [...common, "dashboard:view:team", "bookings:create", "bookings:update", "bookings:cancel", "escalations:create", "escalations:assign", "escalations:tier:2", "escalations:close", "calendar:manage"],
-  "clinic-manager": [...common, "dashboard:view:team", "bookings:create", "bookings:update", "bookings:cancel", "bookings:manage:any", "escalations:create", "escalations:assign", "escalations:tier:2", "escalations:tier:3", "escalations:close", "calendar:manage"],
-  "sales-manager": [...common, "dashboard:view:team", "bookings:create", "bookings:update", "bookings:cancel", "bookings:manage:any", "escalations:create", "escalations:assign", "escalations:tier:2", "escalations:tier:3", "escalations:close", "calendar:manage"],
-  "zonal-head": [...common, "dashboard:view:team", "bookings:create", "bookings:update", "bookings:cancel", "escalations:create", "escalations:assign", "escalations:tier:2", "escalations:tier:3", "escalations:close", "calendar:manage"],
+  "sales-team-lead": [...common, "dashboard:view:team", "bookings:create", "bookings:update", "escalations:create", "escalations:assign", "escalations:tier:2", "escalations:close", "calendar:manage"],
+  "clinic-manager": [...common, "dashboard:view:team", "bookings:create", "bookings:update", "bookings:manage:any", "escalations:create", "escalations:assign", "escalations:tier:2", "escalations:tier:3", "escalations:close", "calendar:manage"],
+  "sales-manager": [...common, "dashboard:view:team", "bookings:create", "bookings:update", "bookings:manage:any", "escalations:create", "escalations:assign", "escalations:tier:2", "escalations:tier:3", "escalations:close", "calendar:manage"],
+  "zonal-head": [...common, "dashboard:view:team", "bookings:create", "bookings:update", "escalations:create", "escalations:assign", "escalations:tier:2", "escalations:tier:3", "escalations:close", "calendar:manage"],
   "central-management": [...common, "dashboard:view:global", "bookings:manage:any", "escalations:manage:any", "calendar:manage"],
   "system-administrator": [...common, "dashboard:view:global", "admin:users", "admin:roles", "admin:workflows", "admin:settings", "admin:data", "admin:audit", "admin:emergency"],
   god: [...PERMISSIONS],

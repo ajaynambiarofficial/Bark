@@ -6,10 +6,11 @@ import { PageHeader } from "../components/ui/PageHeader";
 
 interface Clinic { id: string; name: string }
 interface Service { id: string; name: string; durationMinutes: number }
-interface BookingRow { booking: { id: string; reference: string; status: string; startsAt: string }; customer: { name: string; phone: string; petName: string | null }; clinic: Clinic; service: Service; staff: { displayName: string } | null }
+interface BookingRow { booking: { id: string; reference: string; status: string; startsAt: string; cancellationReason?: string | null }; customer: { name: string; phone: string; petName: string | null }; clinic: Clinic; service: Service; staff: { displayName: string } | null; createdBy?: { id: string; displayName: string; email: string } | null; cancelledBy?: { id: string; displayName: string; email: string } | null }
 const appointmentSections = [
   { title: "Completed", statuses: ["completed", "consulted", "checked_out"], tone: "text-success" },
   { title: "Upcoming", statuses: ["pending", "confirmed", "checked_in", "in_progress"], tone: "text-info" },
+  { title: "Cancelled", statuses: ["cancelled", "canceled"], tone: "text-muted" },
   { title: "No-show", statuses: ["no_show", "noshow"], tone: "text-error" },
 ] as const;
 function todayAt(hour: number, minute = 0): string { const date = new Date(); date.setHours(hour, minute, 0, 0); return date.toISOString(); }
@@ -35,6 +36,7 @@ export function BookingsPage() {
   useEffect(() => { void load().catch((caught) => setError(caught instanceof Error ? caught.message : "Could not load bookings.")); }, []);
   const visible = useMemo(() => { const term = search.trim().toLowerCase(); return term ? displayBookings.filter((row) => [row.booking.reference, row.customer.name, row.customer.phone, row.clinic.name, row.service.name].some((value) => value.toLowerCase().includes(term))) : displayBookings; }, [displayBookings, search]);
   const submit = async (event: React.FormEvent) => { event.preventDefault(); setPending(true); setError(null); try { const service = services.find((item) => item.id === form.serviceId); if (!service) throw new Error("Choose a service."); const startsAt = new Date(form.startsAt); const endsAt = new Date(startsAt.getTime() + service.durationMinutes * 60_000); await api("/bookings", { method: "POST", body: JSON.stringify({ customer: { name: form.customerName, phone: form.phone, ...(form.petName ? { petName: form.petName } : {}) }, clinicId: form.clinicId, serviceId: form.serviceId, startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString(), notes: form.notes }) }); await load(); setFormOpen(false); setForm({ customerName: "", phone: "", petName: "", clinicId: "", serviceId: "", startsAt: "", notes: "" }); } catch (caught) { setError(caught instanceof Error ? caught.message : "Could not create booking."); } finally { setPending(false); } };
+  const cancel = async (row: BookingRow) => { const reason = window.prompt(`Why are you cancelling appointment ${row.booking.reference}?`); if (!reason || reason.trim().length < 3) return; setPending(true); setError(null); try { await api(`/bookings/${row.booking.id}/cancel`, { method: "POST", body: JSON.stringify({ reason }) }); await load(); } catch (caught) { setError(caught instanceof Error ? caught.message : "Could not cancel appointment."); } finally { setPending(false); } };
 
   return <div className="space-y-6">
     <PageHeader eyebrow="Team workspace" title="Bookings" description="Create and track clinic appointments from one operational queue." action={<Button icon={<CalendarPlus size={17} />} onClick={() => setFormOpen((value) => !value)}>{formOpen ? "Close form" : "New booking"}</Button>} />
@@ -53,7 +55,7 @@ export function BookingsPage() {
       <div className="border-b border-default p-4">
         <label className="relative block max-w-md"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" /><input aria-label="Search bookings" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search customer, clinic, service, or reference" className="min-h-11 w-full rounded-lg border border-input bg-input pl-10 pr-3 text-sm" /></label>
       </div>
-      <div className="grid gap-3 border-b border-default p-4 md:grid-cols-3">
+      <div className="grid gap-3 border-b border-default p-4 md:grid-cols-2 xl:grid-cols-4">
         {appointmentSections.map((section) => {
           const appointments = visible.filter((row) => section.statuses.some((status) => status === row.booking.status.toLowerCase()));
           const count = appointments.length;
@@ -73,7 +75,7 @@ export function BookingsPage() {
         })}
       </div>
       {!bookings.length && <p className="border-b border-default px-4 py-2 text-xs text-muted">Sample appointments for preview. Live bookings will appear here when available.</p>}
-      <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-subtle text-xs uppercase text-muted"><tr><th className="p-4">Reference</th><th className="p-4">Customer</th><th className="p-4">Appointment</th><th className="p-4">Clinic</th><th className="p-4">Status</th></tr></thead><tbody>{visible.map((row) => <tr key={row.booking.id} className="border-t border-default"><td className="p-4 font-semibold">{row.booking.reference}</td><td className="p-4"><p>{row.customer.name}</p><p className="text-xs text-muted">{row.customer.petName ?? row.customer.phone}</p></td><td className="p-4"><p>{row.service.name}</p><p className="text-xs text-muted">{new Date(row.booking.startsAt).toLocaleString()}</p></td><td className="p-4">{row.clinic.name}</td><td className="p-4 capitalize">{row.booking.status.replaceAll("_", " ")}</td></tr>)}</tbody></table>{!visible.length && <p className="p-8 text-center text-sm text-muted">No bookings found.</p>}</div>
+      <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-subtle text-xs uppercase text-muted"><tr><th className="p-4">Reference</th><th className="p-4">Customer</th><th className="p-4">Appointment</th><th className="p-4">Clinic</th><th className="p-4">Created by</th><th className="p-4">Status / cancellation</th><th className="p-4">Action</th></tr></thead><tbody>{visible.map((row) => <tr key={row.booking.id} className="border-t border-default"><td className="p-4 font-semibold">{row.booking.reference}</td><td className="p-4"><p>{row.customer.name}</p><p className="text-xs text-muted">{row.customer.petName ?? row.customer.phone}</p></td><td className="p-4"><p>{row.service.name}</p><p className="text-xs text-muted">{new Date(row.booking.startsAt).toLocaleString()}</p></td><td className="p-4">{row.clinic.name}</td><td className="p-4">{row.createdBy?.displayName ?? "Unknown"}<p className="text-xs text-muted">{row.createdBy?.email}</p></td><td className="p-4 capitalize">{row.booking.status.replaceAll("_", " ")}{row.cancelledBy && <p className="mt-1 text-xs text-muted">Cancelled by {row.cancelledBy.displayName}{row.booking.cancellationReason ? ` · ${row.booking.cancellationReason}` : ""}</p>}</td><td className="p-4">{!bookings.length ? <span className="text-xs text-muted">Sample</span> : !["cancelled", "completed"].includes(row.booking.status) ? <Button variant="secondary" disabled={pending} onClick={() => void cancel(row)}>Cancel</Button> : <span className="text-xs text-muted">—</span>}</td></tr>)}</tbody></table>{!visible.length && <p className="p-8 text-center text-sm text-muted">No bookings found.</p>}</div>
     </Card>
   </div>;
 }

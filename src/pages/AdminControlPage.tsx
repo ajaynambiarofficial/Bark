@@ -10,7 +10,9 @@ interface AdminRole { id: string; key: string; name: string; clearanceLevel: num
 interface AdminClinic { id: string; name: string; active: boolean }
 interface AdminUser { id: string; employeeCode: string; displayName: string; email: string; department: string; assignment: string; accountStatus: string; clearanceLevel: number; role: { id?: string; key?: string; name: string } }
 interface AuditEvent { id: string; action: string; entityType: string; entityId: string; reason: string | null; createdAt: string }
-type Section = "users" | "audit";
+type Section = "users" | "audit" | "configure";
+interface ConfigClinic { id: string; code: string; name: string; active: boolean }
+interface ConfigService { id: string; sku: string; name: string; category: string; durationMinutes: number; basePrice: string; active: boolean; clinicPrices: Record<string, string | null> }
 interface NewUserForm { employeeCode: string; email: string; displayName: string; password: string; roleId: string; department: string; assignment: string; clinicIds: string[] }
 const emptyUser: NewUserForm = { employeeCode: "", email: "", displayName: "", password: "", roleId: "", department: "", assignment: "", clinicIds: [] };
 const apiBase = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ?? "/api";
@@ -30,6 +32,8 @@ export function AdminControlPage() {
   const [roles, setRoles] = useState<AdminRole[]>([]);
   const [clinics, setClinics] = useState<AdminClinic[]>([]);
   const [events, setEvents] = useState<AuditEvent[]>([]);
+  const [configClinics, setConfigClinics] = useState<ConfigClinic[]>([]);
+  const [configServices, setConfigServices] = useState<ConfigService[]>([]);
   const [search, setSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,8 +50,8 @@ export function AdminControlPage() {
         setEvents([{ id: "demo-audit-1", action: "auth.login", entityType: "session", entityId: "development-session", reason: "Mock mode demonstration", createdAt: new Date().toISOString() }]);
         return;
       }
-      const [userRows, auditRows, roleRows, clinicRows] = await Promise.all([api<AdminUser[]>("/admin/users?limit=100"), api<AuditEvent[]>("/admin/audit-events?limit=100"), api<AdminRole[]>("/admin/roles"), api<AdminClinic[]>("/admin/clinics")]);
-      setUsers(userRows); setEvents(auditRows); setRoles(roleRows.filter((role) => role.clearanceLevel < (employee?.role === "god" ? 101 : 90))); setClinics(clinicRows.filter((clinic) => clinic.active));
+      const [userRows, auditRows, roleRows, clinicRows, config] = await Promise.all([api<AdminUser[]>("/admin/users?limit=100"), api<AuditEvent[]>("/admin/audit-events?limit=100"), api<AdminRole[]>("/admin/roles"), api<AdminClinic[]>("/admin/clinics"), api<{ clinics: ConfigClinic[]; services: ConfigService[] }>("/admin/configuration/catalog")]);
+      setUsers(userRows); setEvents(auditRows); setRoles(roleRows.filter((role) => role.clearanceLevel < (employee?.role === "god" ? 101 : 90))); setClinics(clinicRows.filter((clinic) => clinic.active)); setConfigClinics(config.clinics); setConfigServices(config.services);
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Could not load administration data."); }
     finally { setLoading(false); }
   };
@@ -82,6 +86,25 @@ export function AdminControlPage() {
     finally { setCreating(false); }
   };
 
+  const saveService = async (service: ConfigService) => {
+    const reason = window.prompt(`Reason for updating ${service.name}:`);
+    if (!reason || reason.trim().length < 3) return;
+    try {
+      const clinicPrices = Object.fromEntries(Object.entries(service.clinicPrices).map(([clinicId, price]) => [clinicId, price === null || price === "" ? null : Number(price)]));
+      await api(`/admin/configuration/services/${service.id}`, { method: "PUT", body: JSON.stringify({ name: service.name, category: service.category, durationMinutes: Number(service.durationMinutes), basePrice: Number(service.basePrice), active: service.active, clinicPrices, reason }) });
+      setError(null);
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "Could not save service configuration."); }
+  };
+
+  const saveClinic = async (clinic: ConfigClinic) => {
+    const reason = window.prompt(`Reason for updating ${clinic.name}:`);
+    if (!reason || reason.trim().length < 3) return;
+    try {
+      await api(`/admin/configuration/clinics/${clinic.id}`, { method: "PUT", body: JSON.stringify({ name: clinic.name, active: clinic.active, reason }) });
+      setError(null);
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "Could not save clinic configuration."); }
+  };
+
   return <div className="space-y-6">
     <div><p className="text-xs font-semibold uppercase tracking-[0.1em] text-brand">Clearance 100</p><h1 className="mt-2 text-3xl font-semibold tracking-tight text-primary">Admin Control Center</h1><p className="mt-2 text-sm text-secondary">Controlled access to users, roles, workflows, settings, emergency controls, and immutable audit history.</p></div>
     <div className="grid gap-4 sm:grid-cols-3">
@@ -89,7 +112,7 @@ export function AdminControlPage() {
       <Card className="p-5"><Activity className="text-brand" size={20} /><p className="mt-3 text-2xl font-semibold">{events.length}</p><p className="text-sm text-muted">Recent audit events</p></Card>
       <Card className="p-5"><ShieldAlert className="text-brand" size={20} /><p className="mt-3 text-2xl font-semibold">Immutable</p><p className="text-sm text-muted">Audit retention</p></Card>
     </div>
-    <div className="flex gap-2"><Button variant={section === "users" ? "primary" : "secondary"} onClick={() => setSection("users")}>Users</Button><Button variant={section === "audit" ? "primary" : "secondary"} onClick={() => setSection("audit")}>Audit Center</Button></div>
+    <div className="flex flex-wrap gap-2"><Button variant={section === "users" ? "primary" : "secondary"} onClick={() => setSection("users")}>Users</Button><Button variant={section === "configure" ? "primary" : "secondary"} onClick={() => setSection("configure")}>Configure</Button><Button variant={section === "audit" ? "primary" : "secondary"} onClick={() => setSection("audit")}>Audit Center</Button></div>
     {error && <p role="alert" className="rounded-lg border border-error-border bg-error-soft p-3 text-sm text-error">{error}</p>}
     <Card className="overflow-hidden">
       {section === "users" ? <>
@@ -110,7 +133,10 @@ export function AdminControlPage() {
           <div className="flex justify-end"><Button type="submit" disabled={creating || mockMode || !roles.length} icon={<Plus size={16} />}>{creating ? "Creating…" : "Create account"}</Button></div>
         </form>}
         <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-subtle text-xs uppercase text-muted"><tr><th className="p-4">User</th><th className="p-4">Role</th><th className="p-4">Clearance</th><th className="p-4">Status</th><th className="p-4">Control</th></tr></thead><tbody>{visibleUsers.map((user) => <tr key={user.id} className="border-t border-default"><td className="p-4"><p className="font-semibold text-primary">{user.displayName}</p><p className="text-xs text-muted">{user.email}</p></td><td className="p-4">{user.role.name}</td><td className="p-4">{user.clearanceLevel}</td><td className="p-4 capitalize">{user.accountStatus}</td><td className="p-4"><Button variant="secondary" disabled={user.clearanceLevel >= (employee?.role === "god" ? 101 : 90)} onClick={() => void suspend(user)}>{user.accountStatus === "suspended" ? "Reactivate" : "Suspend"}</Button></td></tr>)}</tbody></table></div>
-      </> : <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-subtle text-xs uppercase text-muted"><tr><th className="p-4">When</th><th className="p-4">Action</th><th className="p-4">Record</th><th className="p-4">Reason</th></tr></thead><tbody>{events.map((event) => <tr key={event.id} className="border-t border-default"><td className="p-4 whitespace-nowrap">{new Date(event.createdAt).toLocaleString()}</td><td className="p-4 font-medium">{event.action}</td><td className="p-4">{event.entityType}: {event.entityId}</td><td className="p-4 text-muted">{event.reason ?? "—"}</td></tr>)}</tbody></table></div>}
+      </> : section === "configure" ? <div className="space-y-8 p-4 sm:p-6">
+        <section><h2 className="text-lg font-semibold text-primary">Service catalog</h2><p className="mb-4 mt-1 text-sm text-secondary">Edit service names, categories, durations, and default prices. Clinic overrides take priority over the default.</p><div className="space-y-4">{configServices.map((service) => <div key={service.id} className="rounded-xl border border-default p-4"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5"><label className="text-xs font-medium text-secondary">Service name<input value={service.name} onChange={(event) => setConfigServices((rows) => rows.map((row) => row.id === service.id ? { ...row, name: event.target.value } : row))} className="mt-1 min-h-10 w-full rounded-lg border border-input bg-input px-3 text-sm text-primary" /></label><label className="text-xs font-medium text-secondary">Category<input value={service.category} onChange={(event) => setConfigServices((rows) => rows.map((row) => row.id === service.id ? { ...row, category: event.target.value } : row))} className="mt-1 min-h-10 w-full rounded-lg border border-input bg-input px-3 text-sm text-primary" /></label><label className="text-xs font-medium text-secondary">Duration (min)<input type="number" min="1" value={service.durationMinutes} onChange={(event) => setConfigServices((rows) => rows.map((row) => row.id === service.id ? { ...row, durationMinutes: Number(event.target.value) } : row))} className="mt-1 min-h-10 w-full rounded-lg border border-input bg-input px-3 text-sm text-primary" /></label><label className="text-xs font-medium text-secondary">Default price (₹)<input type="number" min="0" step="0.01" value={Number(service.basePrice)} onChange={(event) => setConfigServices((rows) => rows.map((row) => row.id === service.id ? { ...row, basePrice: event.target.value } : row))} className="mt-1 min-h-10 w-full rounded-lg border border-input bg-input px-3 text-sm text-primary" /></label><div className="flex items-end gap-3"><label className="flex min-h-10 items-center gap-2 text-xs text-secondary"><input type="checkbox" checked={service.active} onChange={(event) => setConfigServices((rows) => rows.map((row) => row.id === service.id ? { ...row, active: event.target.checked } : row))} />Active</label><Button variant="secondary" onClick={() => void saveService(service)}>Save service</Button></div></div><p className="mt-3 text-xs font-semibold text-secondary">Clinic prices (leave blank to use default)</p><div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{configClinics.map((clinic) => <label key={clinic.id} className="text-xs text-secondary">{clinic.name}<input aria-label={`${service.name} price at ${clinic.name}`} type="number" min="0" step="0.01" value={service.clinicPrices[clinic.id] ?? ""} onChange={(event) => setConfigServices((rows) => rows.map((row) => row.id === service.id ? { ...row, clinicPrices: { ...row.clinicPrices, [clinic.id]: event.target.value === "" ? null : event.target.value } } : row))} className="mt-1 min-h-9 w-full rounded-lg border border-input bg-input px-2 text-sm text-primary" /></label>)}</div></div>)}</div></section>
+        <section><h2 className="text-lg font-semibold text-primary">Clinics</h2><p className="mb-4 mt-1 text-sm text-secondary">Update clinic display names and availability.</p><div className="space-y-2">{configClinics.map((clinic) => <div key={clinic.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-default p-3"><span className="min-w-28 text-xs text-muted">{clinic.code}</span><input aria-label={`${clinic.code} clinic name`} value={clinic.name} onChange={(event) => setConfigClinics((rows) => rows.map((row) => row.id === clinic.id ? { ...row, name: event.target.value } : row))} className="min-h-10 min-w-48 flex-1 rounded-lg border border-input bg-input px-3 text-sm text-primary" /><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={clinic.active} onChange={(event) => setConfigClinics((rows) => rows.map((row) => row.id === clinic.id ? { ...row, active: event.target.checked } : row))} />Active</label><Button variant="secondary" onClick={() => void saveClinic(clinic)}>Save clinic</Button></div>)}</div></section>
+      </div> : <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-subtle text-xs uppercase text-muted"><tr><th className="p-4">When</th><th className="p-4">Action</th><th className="p-4">Record</th><th className="p-4">Reason</th></tr></thead><tbody>{events.map((event) => <tr key={event.id} className="border-t border-default"><td className="p-4 whitespace-nowrap">{new Date(event.createdAt).toLocaleString()}</td><td className="p-4 font-medium">{event.action}</td><td className="p-4">{event.entityType}: {event.entityId}</td><td className="p-4 text-muted">{event.reason ?? "—"}</td></tr>)}</tbody></table></div>}
       {loading && <p className="p-6 text-sm text-muted">Loading control center…</p>}
     </Card>
   </div>;

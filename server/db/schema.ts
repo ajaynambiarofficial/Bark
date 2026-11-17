@@ -181,6 +181,18 @@ export const customerOrders = pgTable("customer_orders", {
   ...timestamps,
 }, (table) => [index("customer_orders_customer_idx").on(table.customerId, table.orderedAt)]);
 
+export const customerPackages = pgTable("customer_packages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  customerId: uuid("customer_id").notNull().references(() => customers.id, { onDelete: "cascade" }),
+  packageName: varchar("package_name", { length: 180 }).notNull(),
+  status: varchar("status", { length: 30 }).notNull().default("active"),
+  totalUses: integer("total_uses").notNull(),
+  remainingUses: integer("remaining_uses").notNull(),
+  activeFrom: timestamp("active_from", { withTimezone: true }).notNull().defaultNow(),
+  activeUntil: timestamp("active_until", { withTimezone: true }),
+  ...timestamps,
+}, (table) => [index("customer_packages_customer_status_idx").on(table.customerId, table.status)]);
+
 export const bookings = pgTable("bookings", {
   id: uuid("id").primaryKey().defaultRandom(),
   reference: varchar("reference", { length: 40 }).notNull().unique(),

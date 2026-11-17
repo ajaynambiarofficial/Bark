@@ -2,7 +2,7 @@ import { Router } from "express";
 import { and, asc, desc, eq, gt, ilike, inArray, isNull, lt, or } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/client.js";
-import { applicationSettings, assignmentRules, auditEvents, clinics, featureFlags, permissions, rolePermissions, roles, sessions, slaPolicies, userClinics, userPermissions, users } from "../db/schema.js";
+import { applicationSettings, assignmentRules, auditEvents, clinicServices, clinics, featureFlags, permissions, rolePermissions, roles, services, sessions, slaPolicies, userClinics, userPermissions, users } from "../db/schema.js";
 import { hashPassword } from "../auth/password.js";
 import { requireClearance, requirePermission } from "../middleware/auth.js";
 import { ApiError } from "../lib/errors.js";
@@ -29,6 +29,48 @@ async function assertAssignableRole(roleId: string, actorClearance: number) {
 }
 
 router.use(requireClearance(90));
+
+router.get("/configuration/catalog", requirePermission("admin:settings"), async (_request, response) => {
+  const [clinicRows, serviceRows] = await Promise.all([
+    db.select({ id: clinics.id, code: clinics.code, name: clinics.name, active: clinics.active }).from(clinics).orderBy(asc(clinics.name)),
+    db.select({ id: services.id, sku: services.sku, name: services.name, category: services.category, durationMinutes: services.durationMinutes, basePrice: services.basePrice, active: services.active }).from(services).orderBy(asc(services.name)),
+  ]);
+  const clinicPriceRows = await db.select({ clinicId: clinicServices.clinicId, serviceId: clinicServices.serviceId, price: clinicServices.price }).from(clinicServices);
+  response.json({ data: { clinics: clinicRows, services: serviceRows.map((service) => ({ ...service, clinicPrices: Object.fromEntries(clinicPriceRows.filter((row) => row.serviceId === service.id).map((row) => [row.clinicId, row.price])) })) } });
+});
+
+router.put("/configuration/services/:id", requirePermission("admin:settings"), async (request, response) => {
+  const id = uuid.parse(request.params.id);
+  const input = parseBody(request, z.object({ name: z.string().trim().min(2).max(200), category: z.string().trim().min(2).max(80), durationMinutes: z.number().int().min(1).max(1440), basePrice: z.number().min(0).max(1_000_000), active: z.boolean(), clinicPrices: z.record(uuid, z.number().min(0).max(1_000_000).nullable()), reason }));
+  const actor = request.auth!;
+  const [current] = await db.select().from(services).where(eq(services.id, id)).limit(1);
+  if (!current) throw new ApiError(404, "SERVICE_NOT_FOUND", "The service was not found.");
+  const [updated] = await db.transaction(async (transaction) => {
+    const rows = await transaction.update(services).set({ name: input.name, category: input.category, durationMinutes: input.durationMinutes, basePrice: input.basePrice.toFixed(2), active: input.active, updatedAt: new Date() }).where(eq(services.id, id)).returning();
+    for (const [clinicId, price] of Object.entries(input.clinicPrices)) {
+      const [clinic] = await transaction.select({ id: clinics.id }).from(clinics).where(eq(clinics.id, clinicId)).limit(1);
+      if (!clinic) throw new ApiError(400, "CLINIC_INVALID", "A clinic price references an unknown clinic.");
+      await transaction.insert(clinicServices).values({ clinicId, serviceId: id, price: price === null ? null : price.toFixed(2) }).onConflictDoUpdate({ target: [clinicServices.clinicId, clinicServices.serviceId], set: { price: price === null ? null : price.toFixed(2) } });
+    }
+    await appendAudit(transaction, { actor, action: "admin.service_configured", entityType: "service", entityId: id, previousValue: { name: current.name, category: current.category, durationMinutes: current.durationMinutes, basePrice: current.basePrice, active: current.active }, newValue: { name: input.name, category: input.category, durationMinutes: input.durationMinutes, basePrice: input.basePrice, clinicPrices: input.clinicPrices, active: input.active }, reason: input.reason, requestId: request.requestId, ipAddress: request.ip });
+    return rows;
+  });
+  response.json({ data: updated });
+});
+
+router.put("/configuration/clinics/:id", requirePermission("admin:settings"), async (request, response) => {
+  const id = uuid.parse(request.params.id);
+  const input = parseBody(request, z.object({ name: z.string().trim().min(2).max(160), active: z.boolean(), reason }));
+  const actor = request.auth!;
+  const [current] = await db.select().from(clinics).where(eq(clinics.id, id)).limit(1);
+  if (!current) throw new ApiError(404, "CLINIC_NOT_FOUND", "The clinic was not found.");
+  const [updated] = await db.transaction(async (transaction) => {
+    const rows = await transaction.update(clinics).set({ name: input.name, active: input.active, updatedAt: new Date() }).where(eq(clinics.id, id)).returning({ id: clinics.id, code: clinics.code, name: clinics.name, active: clinics.active });
+    await appendAudit(transaction, { actor, action: "admin.clinic_configured", entityType: "clinic", entityId: id, previousValue: { name: current.name, active: current.active }, newValue: input, reason: input.reason, requestId: request.requestId, ipAddress: request.ip });
+    return rows;
+  });
+  response.json({ data: updated });
+});
 
 router.get("/users", requirePermission("admin:users"), async (request, response) => {
   const input = parseQuery(request, listSchema);
