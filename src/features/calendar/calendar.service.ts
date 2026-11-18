@@ -1,4 +1,5 @@
 import type { Employee, EmployeeRole } from "../../types/auth";
+import { dataSources } from "../../config/data-sources";
 
 export const calendarEventTypes = ["Meetings", "Offers", "Feedback session", "Others"] as const;
 export type CalendarEventType = (typeof calendarEventTypes)[number];
@@ -6,11 +7,10 @@ export interface TeamCalendarEvent { id: string; title: string; type: CalendarEv
 interface ApiEvent { id: string; title: string; eventType: CalendarEventType; startsAt: string; description: string; createdBy: string; updatedAt: string }
 
 const editorRoles: readonly EmployeeRole[] = ["sales-team-lead", "sales-manager", "clinic-manager", "central-management", "god"];
-const apiBase = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ?? "/api";
 export function canManageCalendar(role: EmployeeRole) { return editorRoles.includes(role); }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${apiBase}${path}`, { ...init, credentials: "include", headers: { "content-type": "application/json", ...init?.headers } });
+  const response = await fetch(`${dataSources.internalApi.baseUrl}${path}`, { ...init, credentials: "include", headers: { "content-type": "application/json", ...init?.headers } });
   const body = response.status === 204 ? null : await response.json().catch(() => null) as { data?: T; error?: { message?: string } } | null;
   if (!response.ok) throw new Error(body?.error?.message ?? "The calendar request failed.");
   return body?.data as T;

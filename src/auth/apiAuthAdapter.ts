@@ -1,9 +1,8 @@
 import type { AuthAdapter, Employee } from "../types/auth";
-
-const apiBase = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ?? "/api";
+import { dataSources } from "../config/data-sources";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${apiBase}${path}`, { ...init, credentials: "include", headers: { "content-type": "application/json", ...init?.headers } });
+  const response = await fetch(`${dataSources.internalApi.baseUrl}${path}`, { ...init, credentials: "include", headers: { "content-type": "application/json", ...init?.headers } });
   if (!response.ok) {
     const body = await response.json().catch(() => null) as { error?: { message?: string } } | null;
     throw new Error(body?.error?.message ?? "The server could not complete this request.");

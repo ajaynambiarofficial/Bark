@@ -1,12 +1,12 @@
 import type { Employee } from "../../types/auth";
 import type { ActivityType, CommentVisibility, CreateEscalationInput, Escalation, EscalationStatus, EscalationTier, PersonSnapshot } from "./escalation.types";
+import { dataSources } from "../../config/data-sources";
 
-const apiBase = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ?? "/api";
 type ApiPerson = { id: string; displayName: string; email?: string; role?: string; roleLabel?: string; department?: string; assignment?: string };
 type ApiRecord = Record<string, unknown>;
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${apiBase}${path}`, { ...init, credentials: "include", headers: { "content-type": "application/json", ...init?.headers } });
+  const response = await fetch(`${dataSources.internalApi.baseUrl}${path}`, { ...init, credentials: "include", headers: { "content-type": "application/json", ...init?.headers } });
   const body = await response.json().catch(() => null) as { data?: T; error?: { message?: string } } | null;
   if (!response.ok) throw new Error(body?.error?.message ?? "The escalation request failed.");
   return body?.data as T;

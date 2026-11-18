@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: bark-by-supertails
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm ci && npm run build
+    startCommand: npm run db:migrate && npm run start:api
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: APP_ORIGIN
+        sync: false
+      - key: GOD_EMAIL
+        sync: false
+      - key: GOD_PASSWORD
+        sync: false
+      - key: SESSION_COOKIE_NAME
+        value: bark_session
+      - key: SESSION_TTL_HOURS
+        value: "12"
+      - key: TRUST_PROXY
+        value: "true"
+      - key: LOG_LEVEL
+        value: info

@@ -6,7 +6,7 @@ import { env } from "./config/env.js";
 import { logger } from "./lib/logger.js";
 import { ApiError, errorHandler } from "./lib/errors.js";
 import { requestContext } from "./middleware/request-context.js";
-import { enforceTrustedOrigin } from "./middleware/origin.js";
+import { enforceTrustedOrigin, isTrustedOrigin } from "./middleware/origin.js";
 import { requireAuth } from "./middleware/auth.js";
 import { authRouter } from "./routes/auth.routes.js";
 import { bookingRouter } from "./routes/booking.routes.js";
@@ -36,14 +36,14 @@ export function createApp() {
   }));
   app.use((request, response, next) => {
     const origin = request.header("origin");
-    if (origin === env.APP_ORIGIN) {
+    if (origin && isTrustedOrigin(origin)) {
       response.setHeader("access-control-allow-origin", origin);
       response.setHeader("access-control-allow-credentials", "true");
       response.setHeader("vary", "Origin");
     }
     response.setHeader("access-control-allow-headers", "content-type, x-request-id");
     response.setHeader("access-control-allow-methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
-    if (request.method === "OPTIONS") return response.sendStatus(origin === env.APP_ORIGIN ? 204 : 403);
+    if (request.method === "OPTIONS") return response.sendStatus(origin && isTrustedOrigin(origin) ? 204 : 403);
     next();
   });
   app.use(express.json({ limit: "1mb" }));

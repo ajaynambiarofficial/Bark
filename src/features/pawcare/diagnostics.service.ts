@@ -17,12 +17,14 @@ export interface DiagnosticsResult {
   failedSheets: DiagnosticCategory[];
 }
 
-const spreadsheetId = "1F4PlmLixVC0hUf7eNbG1A-j99t7drl5xWG1EHyXp8pg";
+import { dataSources, googleSheetCsvUrl } from "../../config/data-sources";
+
+const { spreadsheetId, sheets } = dataSources.diagnostics;
 const sources: { category: DiagnosticCategory; gid: string }[] = [
-  { category: "Laboratory", gid: "310814413" },
-  { category: "Diagnostic Imaging", gid: "530943433" },
-  { category: "Procedures", gid: "278116135" },
-  { category: "Vaccination", gid: "1932377939" },
+  { category: "Laboratory", gid: sheets.laboratory },
+  { category: "Diagnostic Imaging", gid: sheets.diagnosticImaging },
+  { category: "Procedures", gid: sheets.procedures },
+  { category: "Vaccination", gid: sheets.vaccination },
 ];
 
 function parseCsv(csv: string): string[][] {
@@ -136,7 +138,7 @@ function toItem(category: DiagnosticCategory, row: string[], rowIndex: number): 
 }
 
 async function fetchSheet(category: DiagnosticCategory, gid: string, signal?: AbortSignal): Promise<DiagnosticServiceItem[]> {
-  const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`;
+  const url = googleSheetCsvUrl(spreadsheetId, gid);
   const response = await fetch(url, { ...(signal ? { signal } : {}), headers: { Accept: "text/csv" } });
   if (!response.ok) throw new Error(`Could not load ${category} data.`);
   const rows = parseCsv(await response.text());
