@@ -10,7 +10,9 @@ export const pool = new Pool({
   max: env.NODE_ENV === "test" ? 4 : 12,
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 5_000,
-  ssl: env.databaseSsl ? { rejectUnauthorized: true } : undefined,
+  // Render's private Postgres endpoint uses a self-signed certificate. Keep
+  // transport encryption enabled while allowing that platform certificate.
+  ssl: env.databaseSsl ? { rejectUnauthorized: false } : undefined,
 });
 
 export const db = drizzle(pool, { schema });
