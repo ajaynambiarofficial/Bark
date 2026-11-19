@@ -28,6 +28,7 @@ export function createApp() {
   app.use(helmet({
     contentSecurityPolicy: {
       directives: {
+        connectSrc: ["'self'", "https://docs.google.com"],
         // Local LAN testing uses HTTP; upgrading same-origin bundles to HTTPS leaves the SPA blank.
         upgradeInsecureRequests: env.APP_ORIGIN.startsWith("https://") ? [] : null,
       },
