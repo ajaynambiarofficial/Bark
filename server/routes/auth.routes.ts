@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { Router } from "express";
-import { and, count, eq, gt, isNull } from "drizzle-orm";
+import { and, count, eq, gt, isNull, sql } from "drizzle-orm";
+import { OAuth2Client } from "google-auth-library";
 import { z } from "zod";
 import { env } from "../config/env.js";
 import { db } from "../db/client.js";
@@ -13,7 +14,8 @@ import { parseBody } from "../lib/validation.js";
 import { appendAudit } from "../services/audit.service.js";
 
 const router = Router();
-const loginSchema = z.object({ email: z.string().email().transform((value) => value.trim().toLowerCase()), password: z.string().min(1).max(1024) });
+const loginSchema = z.object({ email: z.string().email().transform((value) => value.trim().toLowerCase()), password: z.string().min(1).max(1024), rememberMe: z.boolean().default(false) });
+const googleLoginSchema = z.object({ credential: z.string().min(1).max(10_000) });
 const forgotPasswordSchema = z.object({ email: z.string().email().transform((value) => value.trim().toLowerCase()) });
 const resetPasswordSchema = z.object({ token: z.string().min(32).max(128), password: z.string().min(14).max(1024) });
 const profileSchema = z.object({
@@ -23,6 +25,7 @@ const profileSchema = z.object({
   avatarData: z.string().max(1_500_000).regex(/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/).nullable(),
 });
 const cookieOptions = { httpOnly: true, secure: env.APP_ORIGIN.startsWith("https://"), sameSite: "lax" as const, path: "/", maxAge: env.SESSION_TTL_HOURS * 60 * 60 * 1000 };
+const googleAuthClient = new OAuth2Client();
 
 function hashResetToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
@@ -78,6 +81,71 @@ router.post("/reset-password", async (request, response) => {
   response.json({ data: { message: "Your password has been reset. Sign in with your new password." } });
 });
 
+router.post("/google", async (request, response) => {
+  if (!env.GOOGLE_CLIENT_ID) throw new ApiError(503, "GOOGLE_SIGNIN_UNAVAILABLE", "Google sign-in has not been configured yet.");
+  const input = parseBody(request, googleLoginSchema);
+  let payload;
+  try {
+    const ticket = await googleAuthClient.verifyIdToken({ idToken: input.credential, audience: env.GOOGLE_CLIENT_ID });
+    payload = ticket.getPayload();
+  } catch {
+    throw new ApiError(401, "GOOGLE_CREDENTIAL_INVALID", "Google could not verify this sign-in. Please try again.");
+  }
+
+  const email = payload?.email?.trim().toLowerCase();
+  if (!payload?.sub || !email || payload.email_verified !== true) {
+    throw new ApiError(401, "GOOGLE_EMAIL_UNVERIFIED", "Use a Google account with a verified email address.");
+  }
+
+  let [record] = await db.select({ id: users.id, accountStatus: users.accountStatus, lockedUntil: users.lockedUntil })
+    .from(users).where(eq(sql`lower(${users.email})`, email)).limit(1);
+
+  if (!record) {
+    const [agentRole] = await db.select({ id: roles.id }).from(roles)
+      .where(and(eq(roles.key, "sales-agent"), eq(roles.active, true))).limit(1);
+    if (!agentRole) throw new ApiError(503, "DEFAULT_ROLE_UNAVAILABLE", "New accounts cannot be created right now. Please contact an administrator.");
+    const displayName = payload.name?.trim().slice(0, 160) || email.split("@")[0]!.slice(0, 160);
+    const passwordHash = await hashPassword(randomBytes(48).toString("base64url"));
+    try {
+      const [created] = await db.insert(users).values({
+        employeeCode: `GOOGLE-${randomBytes(12).toString("hex")}`,
+        email,
+        displayName,
+        passwordHash,
+        roleId: agentRole.id,
+        department: "Unassigned",
+        assignment: "Google sign-in",
+        clearanceLevel: 10,
+      }).returning({ id: users.id, accountStatus: users.accountStatus, lockedUntil: users.lockedUntil });
+      record = created;
+    } catch (error) {
+      // A concurrent first sign-in can win the unique email index. Re-read that account.
+      const [existing] = await db.select({ id: users.id, accountStatus: users.accountStatus, lockedUntil: users.lockedUntil })
+        .from(users).where(eq(sql`lower(${users.email})`, email)).limit(1);
+      if (!existing) throw error;
+      record = existing;
+    }
+  }
+
+  if (!record) throw new ApiError(500, "GOOGLE_ACCOUNT_CREATE_FAILED", "The account could not be created.");
+  const [accountRole] = await db.select({ active: roles.active }).from(users).innerJoin(roles, eq(users.roleId, roles.id)).where(eq(users.id, record.id)).limit(1);
+  if (!accountRole?.active) throw new ApiError(403, "ACCOUNT_UNAVAILABLE", "This account is unavailable. Contact an administrator for access.");
+  const active = record.accountStatus === "active" && (!record.lockedUntil || record.lockedUntil <= new Date());
+  if (!active) throw new ApiError(403, "ACCOUNT_UNAVAILABLE", "This account is unavailable. Contact an administrator for access.");
+
+  const token = randomBytes(32).toString("base64url");
+  const ttlMs = env.SESSION_TTL_HOURS * 60 * 60 * 1000;
+  const expiresAt = new Date(Date.now() + ttlMs);
+  const ipAddress = request.ip ?? "unknown";
+  const [session] = await db.insert(sessions).values({ userId: record.id, tokenHash: hashSessionToken(token), ipAddress, userAgent: request.header("user-agent") ?? null, expiresAt }).returning({ id: sessions.id });
+  if (!session) throw new ApiError(500, "SESSION_CREATE_FAILED", "The session could not be created.");
+  await db.update(users).set({ failedLoginCount: 0, lockedUntil: null, lastLoginAt: new Date(), updatedAt: new Date() }).where(eq(users.id, record.id));
+  const principal = await loadPrincipalByToken(token);
+  if (!principal) throw new ApiError(500, "SESSION_CREATE_FAILED", "The session could not be loaded.");
+  await appendAudit(db, { actor: principal, action: "auth.google_login", entityType: "session", entityId: session.id, requestId: request.requestId, ipAddress });
+  response.cookie(env.SESSION_COOKIE_NAME, token, { ...cookieOptions, maxAge: ttlMs }).status(200).json({ data: { employee: employeeResponse(principal), expiresAt } });
+});
+
 router.post("/login", async (request, response) => {
   const input = parseBody(request, loginSchema);
   const ipAddress = request.ip ?? "unknown";
@@ -102,7 +170,8 @@ router.post("/login", async (request, response) => {
   }
 
   const token = randomBytes(32).toString("base64url");
-  const expiresAt = new Date(Date.now() + env.SESSION_TTL_HOURS * 60 * 60 * 1000);
+  const ttlMs = input.rememberMe ? 30 * 24 * 60 * 60 * 1000 : env.SESSION_TTL_HOURS * 60 * 60 * 1000;
+  const expiresAt = new Date(Date.now() + ttlMs);
   const [session] = await db.insert(sessions).values({ userId: record.id, tokenHash: hashSessionToken(token), ipAddress, userAgent: request.header("user-agent") ?? null, expiresAt }).returning({ id: sessions.id });
   if (!session) throw new ApiError(500, "SESSION_CREATE_FAILED", "The session could not be created.");
   await db.update(users).set({ failedLoginCount: 0, lockedUntil: null, lastLoginAt: new Date(), updatedAt: new Date() }).where(eq(users.id, record.id));
@@ -110,7 +179,7 @@ router.post("/login", async (request, response) => {
   const principal = await loadPrincipalByToken(token);
   if (!principal) throw new ApiError(500, "SESSION_CREATE_FAILED", "The session could not be loaded.");
   await appendAudit(db, { actor: principal, action: "auth.login", entityType: "session", entityId: session.id, requestId: request.requestId, ipAddress });
-  response.cookie(env.SESSION_COOKIE_NAME, token, cookieOptions).status(200).json({ data: { employee: employeeResponse(principal), expiresAt } });
+  response.cookie(env.SESSION_COOKIE_NAME, token, { ...cookieOptions, maxAge: ttlMs }).status(200).json({ data: { employee: employeeResponse(principal), expiresAt } });
 });
 
 router.get("/session", requireAuth, (request, response) => {

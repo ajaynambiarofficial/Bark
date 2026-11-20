@@ -34,6 +34,7 @@ export interface RoleDefinition {
 
 export interface AuthAdapter {
   restoreSession(): Promise<Employee | null>;
-  signIn(email: string, password: string): Promise<Employee>;
+  signIn(email: string, password: string, rememberMe?: boolean): Promise<Employee>;
+  signInWithGoogle(credential: string): Promise<Employee>;
   signOut(): Promise<void>;
 }

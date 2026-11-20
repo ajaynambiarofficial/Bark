@@ -7,6 +7,7 @@ const schema = z.object({
   DATABASE_URL: z.string().min(1),
   DATABASE_SSL: z.enum(["true", "false"]).optional(),
   APP_ORIGIN: z.string().url().default("http://localhost:5173"),
+  GOOGLE_CLIENT_ID: z.string().min(1).optional(),
   SESSION_COOKIE_NAME: z.string().min(3).default("bark_session"),
   SESSION_TTL_HOURS: z.coerce.number().int().min(1).max(720).default(12),
   ALLOW_LOCAL_PASSWORD_RESET_LINKS: z.enum(["true", "false"]).default("false"),

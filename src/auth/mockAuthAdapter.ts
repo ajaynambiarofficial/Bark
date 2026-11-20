@@ -23,6 +23,10 @@ export const mockAuthAdapter: AuthAdapter = {
     return employee;
   },
 
+  async signInWithGoogle(): Promise<Employee> {
+    throw new Error("Google sign-in is unavailable in demo authentication mode.");
+  },
+
   async signOut(): Promise<void> {
     window.localStorage.removeItem(SESSION_KEY);
   },

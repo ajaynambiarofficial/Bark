@@ -6,6 +6,7 @@ import { PageHeader } from "../components/ui/PageHeader";
 
 interface Clinic { id: string; name: string }
 interface Service { id: string; sku: string; name: string; category: string; durationMinutes: number; price: number }
+interface QuoteOffer { id: string; code: string; name: string; description: string; discountType: "percent" | "amount"; discountValue: number | string; minimumSubtotal: number | string }
 interface QuoteLine extends Service { quantity: number; unitPrice: number }
 interface ApiBody<T> { data: T; error?: { message?: string } }
 interface QuoteSnapshot {
@@ -15,6 +16,7 @@ interface QuoteSnapshot {
   customerPhone: string;
   customerEmail: string;
   clinicName: string;
+  offerName: string;
   codeReference: string;
   discountType: "percent" | "amount";
   discountInput: number;
@@ -24,7 +26,7 @@ interface QuoteSnapshot {
 const apiBase = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ?? "/api";
 const inputClass = "min-h-11 w-full rounded-lg border border-input bg-input px-3 text-sm text-primary";
 const labelClass = "text-sm font-medium text-primary";
-const currency = (amount: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(amount);
+const currency = (amount: number | string) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(Number(amount) || 0);
 
 async function api<T>(path: string): Promise<T> {
   const response = await fetch(`${apiBase}${path}`, { credentials: "include" });
@@ -43,6 +45,8 @@ export function QuoteGeneratorPage() {
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [clinicId, setClinicId] = useState("");
   const [services, setServices] = useState<Service[]>([]);
+  const [offers, setOffers] = useState<QuoteOffer[]>([]);
+  const [selectedOfferId, setSelectedOfferId] = useState("");
   const [lines, setLines] = useState<QuoteLine[]>([]);
   const [query, setQuery] = useState("");
   const [customerName, setCustomerName] = useState("");
@@ -71,13 +75,17 @@ export function QuoteGeneratorPage() {
     if (!clinicId) { setServices([]); return; }
     setLoading(true);
     setError(null);
-    void api<Service[]>(`/catalog/services?clinicId=${encodeURIComponent(clinicId)}`).then((rows) => { if (active) setServices(rows); })
-      .catch((caught) => { if (active) setError(caught instanceof Error ? caught.message : "Could not load clinic services."); })
+    void Promise.all([api<Service[]>(`/catalog/services?clinicId=${encodeURIComponent(clinicId)}`), api<QuoteOffer[]>(`/catalog/offers?clinicId=${encodeURIComponent(clinicId)}`)])
+      .then(([serviceRows, offerRows]) => { if (active) { setServices(serviceRows); setOffers(offerRows); setSelectedOfferId(""); } })
+      .catch((caught) => { if (active) setError(caught instanceof Error ? caught.message : "Could not load the clinic catalog."); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [clinicId]);
 
   const selectedClinic = clinics.find((clinic) => clinic.id === clinicId);
+  const selectedOffer = offers.find((offer) => offer.id === selectedOfferId);
+  const appliedDiscountType = selectedOffer?.discountType ?? discountType;
+  const appliedDiscountValue = selectedOffer ? Number(selectedOffer.discountValue) : discountInput;
   const filteredServices = useMemo(() => {
     const term = query.trim().toLowerCase();
     return services.filter((service) => !term || [service.name, service.category, service.sku].some((value) => value.toLowerCase().includes(term)));
@@ -101,7 +109,10 @@ export function QuoteGeneratorPage() {
     if (!lines.length || !selectedClinic) return;
     const now = new Date();
     const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(now.getSeconds()).padStart(2, "0")}`;
-    setQuote({ reference: `Q-${stamp}`, createdAt: now.toISOString(), customerName, customerPhone, customerEmail, clinicName: selectedClinic.name, codeReference, discountType, discountInput, lines: lines.map((line) => ({ ...line })) });
+    const subtotal = lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
+    if (selectedOffer && subtotal < Number(selectedOffer.minimumSubtotal)) { setError(`This offer requires a minimum subtotal of ${currency(Number(selectedOffer.minimumSubtotal))}.`); return; }
+    setError(null);
+    setQuote({ reference: `Q-${stamp}`, createdAt: now.toISOString(), customerName, customerPhone, customerEmail, clinicName: selectedClinic.name, offerName: selectedOffer?.name ?? "", codeReference, discountType: appliedDiscountType, discountInput: appliedDiscountValue, lines: lines.map((line) => ({ ...line })) });
   };
 
   const quoteSubtotal = quote?.lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0) ?? 0;
@@ -119,7 +130,7 @@ export function QuoteGeneratorPage() {
             <label className={labelClass}>Customer name<input required value={customerName} onChange={(event) => { setCustomerName(event.target.value); setQuote(null); }} className={inputClass} placeholder="Pet parent name" /></label>
             <label className={labelClass}>Phone<input required type="tel" value={customerPhone} onChange={(event) => { setCustomerPhone(event.target.value); setQuote(null); }} className={inputClass} placeholder="Contact number" /></label>
             <label className={labelClass}>Email (optional)<input type="email" value={customerEmail} onChange={(event) => { setCustomerEmail(event.target.value); setQuote(null); }} className={inputClass} placeholder="name@example.com" /></label>
-            <label className={labelClass}>Clinic<select required value={clinicId} onChange={(event) => { setClinicId(event.target.value); setLines([]); setQuote(null); }} className={inputClass}><option value="">Choose clinic</option>{clinics.map((clinic) => <option key={clinic.id} value={clinic.id}>{clinic.name}</option>)}</select></label>
+            <label className={labelClass}>Clinic<select required value={clinicId} onChange={(event) => { setClinicId(event.target.value); setLines([]); setOffers([]); setSelectedOfferId(""); setCodeReference(""); setQuote(null); }} className={inputClass}><option value="">Choose clinic</option>{clinics.map((clinic) => <option key={clinic.id} value={clinic.id}>{clinic.name}</option>)}</select></label>
           </div>
         </Card>
 
@@ -140,17 +151,18 @@ export function QuoteGeneratorPage() {
 
           <Card className="space-y-4 p-5">
             <h2 className="text-base font-semibold text-primary">Discount</h2>
-            <label className={labelClass}>Discount code / approval reference<input value={codeReference} onChange={(event) => { setCodeReference(event.target.value); setQuote(null); }} className={inputClass} placeholder="Enter the approved code or reference" /></label>
-            <div className="grid gap-3 sm:grid-cols-[1fr_1fr]"><label className={labelClass}>Discount type<select value={discountType} onChange={(event) => { setDiscountType(event.target.value as "percent" | "amount"); setQuote(null); }} className={inputClass}><option value="percent">Percentage</option><option value="amount">Fixed amount (₹)</option></select></label><label className={labelClass}>Discount value<input type="number" min="0" max={discountType === "percent" ? 100 : undefined} step="0.01" value={discountInput} onChange={(event) => { setDiscountInput(Math.max(0, Number(event.target.value) || 0)); setQuote(null); }} className={inputClass} /></label></div>
-            <p className="text-xs leading-5 text-muted">Enter only a discount approved for this customer. The code is recorded on the quote; code validity is not yet connected to a central promotion list.</p>
-            <QuoteTotals lines={lines} type={discountType} value={discountInput} />
+            <label className={labelClass}>Configured offer<select value={selectedOfferId} onChange={(event) => { const offer = offers.find((candidate) => candidate.id === event.target.value); setSelectedOfferId(event.target.value); setCodeReference(offer?.code ?? ""); setQuote(null); setError(null); }} className={inputClass}><option value="">Manual approved discount</option>{offers.map((offer) => <option key={offer.id} value={offer.id}>{offer.name} · {offer.discountType === "percent" ? `${offer.discountValue}% off` : `${currency(offer.discountValue)} off`} ({offer.code})</option>)}</select></label>
+            {!selectedOffer && <label className={labelClass}>Discount code / approval reference<input value={codeReference} onChange={(event) => { setCodeReference(event.target.value); setQuote(null); }} className={inputClass} placeholder="Enter the approved code or reference" /></label>}
+            <div className="grid gap-3 sm:grid-cols-[1fr_1fr]"><label className={labelClass}>Discount type<select disabled={Boolean(selectedOffer)} value={appliedDiscountType} onChange={(event) => { setDiscountType(event.target.value as "percent" | "amount"); setQuote(null); }} className={`${inputClass} disabled:opacity-60`}><option value="percent">Percentage</option><option value="amount">Fixed amount (₹)</option></select></label><label className={labelClass}>Discount value<input disabled={Boolean(selectedOffer)} type="number" min="0" max={appliedDiscountType === "percent" ? 100 : undefined} step="0.01" value={appliedDiscountValue} onChange={(event) => { setDiscountInput(Math.max(0, Number(event.target.value) || 0)); setQuote(null); }} className={`${inputClass} disabled:opacity-60`} /></label></div>
+            {selectedOffer ? <p className="text-xs leading-5 text-info">{selectedOffer.description || `${selectedOffer.name} is configured for this clinic.`} Minimum subtotal: {currency(Number(selectedOffer.minimumSubtotal))}.</p> : <p className="text-xs leading-5 text-muted">Use a configured offer or enter a discount approved for this customer. Manual discount values are recorded on the quote.</p>}
+            <QuoteTotals lines={lines} type={appliedDiscountType} value={appliedDiscountValue} />
             <Button type="submit" disabled={!lines.length || !customerName.trim() || !customerPhone.trim() || !clinicId} fullWidth icon={<FileText size={16} />}>Generate quote</Button>
           </Card>
         </form> : <Card className="quote-print p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3 border-b border-default pb-4"><div><p className="text-xs font-semibold uppercase tracking-wide text-brand">Pawcare service estimate</p><h2 className="mt-1 text-xl font-bold text-primary">Quote {quote.reference}</h2><p className="mt-1 text-xs text-muted">Created {new Date(quote.createdAt).toLocaleString("en-IN")}</p></div><span className="rounded-lg bg-brand-soft px-3 py-2 text-sm font-semibold text-brand-strong">{quote.clinicName}</span></div>
           <div className="grid gap-2 border-b border-default py-4 text-sm sm:grid-cols-2"><p><span className="text-muted">Customer:</span> <strong className="text-primary">{quote.customerName}</strong></p><p><span className="text-muted">Phone:</span> <strong className="text-primary">{quote.customerPhone}</strong></p>{quote.customerEmail && <p className="sm:col-span-2"><span className="text-muted">Email:</span> <strong className="text-primary">{quote.customerEmail}</strong></p>}</div>
           <div className="overflow-x-auto"><table className="w-full min-w-[420px] text-left text-sm"><thead><tr className="border-b border-default text-xs text-muted"><th className="py-3 pr-3 font-semibold">Service</th><th className="py-3 px-2 text-right font-semibold">Qty</th><th className="py-3 px-2 text-right font-semibold">Rate</th><th className="py-3 pl-2 text-right font-semibold">Amount</th></tr></thead><tbody className="divide-y divide-default">{quote.lines.map((line) => <tr key={line.id}><td className="py-3 pr-3 font-medium text-primary">{line.name}</td><td className="py-3 px-2 text-right tabular-nums">{line.quantity}</td><td className="py-3 px-2 text-right tabular-nums">{currency(line.unitPrice)}</td><td className="py-3 pl-2 text-right font-semibold tabular-nums">{currency(line.unitPrice * line.quantity)}</td></tr>)}</tbody></table></div>
-          <dl className="ml-auto mt-4 w-full max-w-xs space-y-2 text-sm"><div className="flex justify-between gap-3"><dt className="text-secondary">Subtotal</dt><dd className="font-semibold tabular-nums text-primary">{currency(quoteSubtotal)}</dd></div><div className="flex justify-between gap-3"><dt className="text-secondary">Discount{quote.codeReference ? ` (${quote.codeReference})` : ""}</dt><dd className="font-semibold tabular-nums text-success">−{currency(quoteDiscount)}</dd></div><div className="flex justify-between gap-3 border-t border-default pt-2 text-base"><dt className="font-bold text-primary">Estimated total</dt><dd className="font-bold tabular-nums text-primary">{currency(Math.max(0, quoteSubtotal - quoteDiscount))}</dd></div></dl>
+          <dl className="ml-auto mt-4 w-full max-w-xs space-y-2 text-sm"><div className="flex justify-between gap-3"><dt className="text-secondary">Subtotal</dt><dd className="font-semibold tabular-nums text-primary">{currency(quoteSubtotal)}</dd></div><div className="flex justify-between gap-3"><dt className="text-secondary">Discount{quote.codeReference ? ` (${quote.codeReference})` : ""}</dt><dd className="font-semibold tabular-nums text-success">−{currency(quoteDiscount)}</dd></div>{quote.offerName && <div className="flex justify-between gap-3"><dt className="text-secondary">Offer</dt><dd className="font-medium text-primary">{quote.offerName}</dd></div>}<div className="flex justify-between gap-3 border-t border-default pt-2 text-base"><dt className="font-bold text-primary">Estimated total</dt><dd className="font-bold tabular-nums text-primary">{currency(Math.max(0, quoteSubtotal - quoteDiscount))}</dd></div></dl>
           <p className="mt-5 border-t border-default pt-4 text-xs leading-5 text-muted">This estimate is valid for 7 days. Final service availability and applicable taxes will be confirmed by the clinic.</p>
           <div className="mt-5 flex flex-wrap justify-between gap-2 print:hidden"><Button variant="secondary" onClick={() => setQuote(null)}>Edit quote</Button><Button variant="secondary" icon={<Printer size={15} />} onClick={() => window.print()}>Print / Save PDF</Button></div>
         </Card>}

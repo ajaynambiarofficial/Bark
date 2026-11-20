@@ -1,6 +1,6 @@
 import { ArrowLeft, CheckCircle2, FileText, Info, Paperclip, ShieldCheck, Trash2, UploadCloud, UserRound } from "lucide-react";
 import { useMemo, useRef, useState, useEffect, type DragEvent, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../../auth/AuthContext";
 import { mockEmployees } from "../../data/employees";
 import { Button } from "../../components/ui/Button";
@@ -37,18 +37,24 @@ function formatBytes(bytes: number) {
 export function CreateEscalationPage() {
   const { employee } = useAuth();
   const navigate = useNavigate();
-  const draftKey = `bark.escalation-draft.v1.${employee?.id ?? "unknown"}`;
+  const [searchParams] = useSearchParams();
+  const standardMode = searchParams.get("mode") === "standard";
+  const standardKind = searchParams.get("kind");
+  const draftKey = `bark.escalation-draft.v1.${employee?.id ?? "unknown"}.${standardMode ? `standard-${standardKind === "feature" ? "feature" : "bug"}` : "escalation"}`;
   const initialDraft = useMemo(() => {
     try { return JSON.parse(window.localStorage.getItem(draftKey) ?? "null") as Partial<FormState> | null; } catch { return null; }
   }, [draftKey]);
-  const [form, setForm] = useState<FormState>(() => ({ ...emptyForm, ...initialDraft, customerPhone: "" }));
+  const [form, setForm] = useState<FormState>(() => {
+    const prefix = standardMode ? standardKind === "feature" ? "Feature Request: " : "Bug Report: " : "";
+    return { ...emptyForm, ...(prefix ? { title: prefix } : {}), ...initialDraft, issueType: standardMode ? "standard" : "escalation", customerPhone: "" };
+  });
   const [attachments, setAttachments] = useState<AttachmentMetadata[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [attachmentError, setAttachmentError] = useState("");
   const [pending, setPending] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [draftRestored, setDraftRestored] = useState(Boolean(initialDraft));
-  const [titleEdited, setTitleEdited] = useState(Boolean(initialDraft?.title));
+  const [titleEdited, setTitleEdited] = useState(Boolean(initialDraft?.title || standardMode));
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -107,7 +113,7 @@ export function CreateEscalationPage() {
       if (!/^[A-Z0-9-]{4,30}$/.test(form.linkedTicketId.replace(/\s+/g, "").toUpperCase())) next.linkedTicketId = "Enter a valid ticket ID using letters, numbers, or hyphens.";
       if (!/^\d{10}$/.test(form.customerPhone)) next.customerPhone = "Enter exactly 10 digits.";
     }
-    if (form.issueType === "escalation" && form.description.trim().length < 10) next.description = "Describe what happened and the assistance required (at least 10 characters).";
+    if (form.description.trim().length < 10) next.description = "Describe what happened and the assistance required (at least 10 characters).";
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -136,18 +142,13 @@ export function CreateEscalationPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <div><Link to="/escalations" className="inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-secondary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"><ArrowLeft size={17} />Back to Escalations</Link><h1 className="mt-3 text-[clamp(1.65rem,3vw,2rem)] font-semibold tracking-[-0.035em] text-primary">Create Escalation</h1><p className="mt-2 text-[15px] text-secondary">Record an operational issue and route it to one accountable owner.</p></div>
+      <div><Link to="/escalations" className="inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-secondary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"><ArrowLeft size={17} />Back to Escalations</Link><h1 className="mt-3 text-[clamp(1.65rem,3vw,2rem)] font-semibold tracking-[-0.035em] text-primary">{standardMode ? standardKind === "feature" ? "Feature Request" : "Report a Bug" : "Create Escalation"}</h1><p className="mt-2 text-[15px] text-secondary">{standardMode ? "Submit an issue using the same product areas and issue options as escalations." : "Record an operational issue and route it to one accountable owner."}</p></div>
       {draftRestored && <div className="flex flex-col gap-3 rounded-[var(--radius-md)] border border-info-border bg-info-soft p-4 text-sm text-info sm:flex-row sm:items-center sm:justify-between"><span><strong>Draft restored.</strong> Customer phone and attachments are never retained in drafts.</span><Button variant="ghost" onClick={() => { window.localStorage.removeItem(draftKey); setForm(emptyForm); setAttachments([]); setDraftRestored(false); setTitleEdited(false); }}>Discard draft</Button></div>}
       {!allowed && <div role="alert" className="rounded-[var(--radius-md)] border border-error-border bg-error-soft p-4 text-sm text-error">Your current demo role cannot create operational escalations.</div>}
       <form onSubmit={(event) => void handleSubmit(event)} className="space-y-5" noValidate>
         <Card className="p-5 sm:p-6">
           <div className="mb-5 flex items-center gap-3"><span className="grid size-10 place-items-center rounded-[var(--radius-md)] bg-brand-soft text-brand-strong"><UserRound size={19} /></span><div><h2 className="font-semibold text-primary">Reporter information</h2><p className="text-sm text-secondary">Populated from your signed-in profile</p></div></div>
           <dl className="grid gap-4 rounded-[var(--radius-md)] bg-subtle p-4 sm:grid-cols-2 lg:grid-cols-4">{[["Name", employee.displayName], ["Role", employee.roleLabel], ["Department", employee.department], ["Team or clinic", employee.assignment]].map(([term, value]) => <div key={term}><dt className="text-xs font-medium text-muted">{term}</dt><dd className="mt-1 text-sm font-semibold text-primary">{value}</dd></div>)}</dl>
-        </Card>
-
-        <Card className="p-5 sm:p-6">
-          <h2 className="font-semibold text-primary">Issue type</h2><p className="mt-1 text-sm text-secondary">Choose whether this is routine tracking or requires escalation ownership.</p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">{(["standard", "escalation"] as IssueType[]).map((type) => <button key={type} type="button" aria-pressed={form.issueType === type} onClick={() => setValue("issueType", type)} className={`rounded-[var(--radius-md)] border p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${form.issueType === type ? "border-brand bg-brand-soft" : "border-default bg-surface hover:bg-hover"}`}><span className="font-semibold text-primary">{type === "standard" ? "Standard Issue" : "Escalation"}</span><span className="mt-1 block text-sm text-secondary">{type === "standard" ? "Recorded for operational tracking with a 24-hour target." : "Requires routed ownership and an active response SLA."}</span></button>)}</div>
         </Card>
 
         <Card className="p-5 sm:p-6">

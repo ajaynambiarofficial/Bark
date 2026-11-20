@@ -131,6 +131,23 @@ export const clinicServices = pgTable("clinic_services", {
   active: boolean("active").notNull().default(true),
 }, (table) => [primaryKey({ columns: [table.clinicId, table.serviceId] })]);
 
+export const offers = pgTable("offers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  code: varchar("code", { length: 64 }).notNull(),
+  name: varchar("name", { length: 160 }).notNull(),
+  description: text("description").notNull().default(""),
+  discountType: varchar("discount_type", { length: 16 }).notNull(),
+  discountValue: numeric("discount_value", { precision: 12, scale: 2 }).notNull(),
+  minimumSubtotal: numeric("minimum_subtotal", { precision: 12, scale: 2 }).notNull().default("0"),
+  clinicId: uuid("clinic_id").references(() => clinics.id, { onDelete: "set null" }),
+  startsAt: timestamp("starts_at", { withTimezone: true }),
+  endsAt: timestamp("ends_at", { withTimezone: true }),
+  active: boolean("active").notNull().default(true),
+  createdBy: uuid("created_by").notNull().references(() => users.id),
+  updatedBy: uuid("updated_by").notNull().references(() => users.id),
+  ...timestamps,
+}, (table) => [uniqueIndex("offers_code_lower_unique").on(sql`lower(${table.code})`), index("offers_active_clinic_idx").on(table.active, table.clinicId)]);
+
 export const customers = pgTable("customers", {
   id: uuid("id").primaryKey().defaultRandom(),
   externalRef: varchar("external_ref", { length: 100 }),
@@ -235,6 +252,33 @@ export const slaPolicies = pgTable("sla_policies", {
   active: boolean("active").notNull().default(true),
   ...timestamps,
 });
+
+export const notices = pgTable("notices", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: varchar("title", { length: 180 }).notNull(),
+  body: text("body").notNull(),
+  type: varchar("type", { length: 24 }).notNull().default("general"),
+  cadence: varchar("cadence", { length: 16 }).notNull().default("once"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  archivedBy: uuid("archived_by").references(() => users.id, { onDelete: "set null" }),
+  createdBy: uuid("created_by").notNull().references(() => users.id),
+  ...timestamps,
+}, (table) => [index("notices_active_expiry_idx").on(table.archivedAt, table.expiresAt), index("notices_created_idx").on(table.createdAt)]);
+
+export const noticeComments = pgTable("notice_comments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  noticeId: uuid("notice_id").notNull().references(() => notices.id, { onDelete: "cascade" }),
+  authorId: uuid("author_id").notNull().references(() => users.id),
+  body: text("body").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [index("notice_comments_notice_created_idx").on(table.noticeId, table.createdAt)]);
+
+export const noticeAcknowledgements = pgTable("notice_acknowledgements", {
+  noticeId: uuid("notice_id").notNull().references(() => notices.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [primaryKey({ columns: [table.noticeId, table.userId] }), index("notice_acknowledgements_user_idx").on(table.userId)]);
 
 export const assignmentRules = pgTable("assignment_rules", {
   id: uuid("id").primaryKey().defaultRandom(),

@@ -16,6 +16,7 @@ import { dashboardRouter } from "./routes/dashboard.routes.js";
 import { adminRouter } from "./routes/admin.routes.js";
 import { catalogRouter } from "./routes/catalog.routes.js";
 import { customerRouter } from "./routes/customer.routes.js";
+import { noticeRouter } from "./routes/notice.routes.js";
 import { resolve } from "node:path";
 
 export function createApp() {
@@ -60,6 +61,7 @@ export function createApp() {
   app.use("/api/dashboard", dashboardRouter);
   app.use("/api/catalog", catalogRouter);
   app.use("/api/customers", customerRouter);
+  app.use("/api/notices", noticeRouter);
   app.use("/api/admin", adminRouter);
   if (env.isProduction) {
     const webRoot = resolve(process.cwd(), "dist");

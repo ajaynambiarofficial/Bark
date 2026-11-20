@@ -77,7 +77,7 @@ export function EscalationOverviewPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Operations" title="Escalations" description="Track, manage, and resolve operational issues across teams." action={canCreateEscalation(employee) ? <Button icon={<Plus size={17} />} onClick={() => navigate("/escalations/new")}>New Escalation</Button> : undefined} />
+      <PageHeader eyebrow="Operations" title="Escalations" description="Track, manage, and resolve operational issues across teams." action={canCreateEscalation(employee) ? <div className="flex flex-wrap gap-2"><Button variant="secondary" onClick={() => navigate("/escalations/new?mode=standard&kind=feature")}>Feature Request</Button><Button variant="secondary" onClick={() => navigate("/escalations/new?mode=standard&kind=bug")}>Report Bug</Button><Button icon={<Plus size={17} />} onClick={() => navigate("/escalations/new")}>New Escalation</Button></div> : undefined} />
 
       <section aria-label="Escalation summary" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[

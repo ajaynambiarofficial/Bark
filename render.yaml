@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     region: singapore
-      buildCommand: npm ci --include=dev && npm run build
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: npm run db:migrate && npm run start:api
     healthCheckPath: /api/health
     autoDeploy: true

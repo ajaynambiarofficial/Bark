@@ -6,7 +6,8 @@ import type { Employee } from "../types/auth";
 interface AuthContextValue {
   employee: Employee | null;
   isRestoring: boolean;
-  signIn(email: string, password: string): Promise<void>;
+  signIn(email: string, password: string, rememberMe?: boolean): Promise<void>;
+  signInWithGoogle(credential: string): Promise<void>;
   signOut(): Promise<void>;
   updateEmployee(changes: Partial<Employee>): void;
 }
@@ -35,9 +36,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
     };
   }, []);
 
-  const signIn = useCallback(async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string, rememberMe = false) => {
     const adapter = await getAuthAdapter();
-    const signedInEmployee = await adapter.signIn(email, password);
+    const signedInEmployee = await adapter.signIn(email, password, rememberMe);
+    setEmployee(signedInEmployee);
+  }, []);
+
+  const signInWithGoogle = useCallback(async (credential: string) => {
+    const adapter = await getAuthAdapter();
+    const signedInEmployee = await adapter.signInWithGoogle(credential);
     setEmployee(signedInEmployee);
   }, []);
 
@@ -52,8 +59,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, []);
 
   const value = useMemo(
-    () => ({ employee, isRestoring, signIn, signOut, updateEmployee }),
-    [employee, isRestoring, signIn, signOut, updateEmployee],
+    () => ({ employee, isRestoring, signIn, signInWithGoogle, signOut, updateEmployee }),
+    [employee, isRestoring, signIn, signInWithGoogle, signOut, updateEmployee],
   );
 
   return <AuthContext value={value}>{children}</AuthContext>;

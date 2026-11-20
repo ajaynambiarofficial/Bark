@@ -20,8 +20,12 @@ export const apiAuthAdapter: AuthAdapter = {
       return null;
     }
   },
-  async signIn(email, password) {
-    const result = await request<{ data: { employee: Employee } }>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
+  async signIn(email, password, rememberMe = false) {
+    const result = await request<{ data: { employee: Employee } }>("/auth/login", { method: "POST", body: JSON.stringify({ email, password, rememberMe }) });
+    return result.data.employee;
+  },
+  async signInWithGoogle(credential) {
+    const result = await request<{ data: { employee: Employee } }>("/auth/google", { method: "POST", body: JSON.stringify({ credential }) });
     return result.data.employee;
   },
   async signOut() {

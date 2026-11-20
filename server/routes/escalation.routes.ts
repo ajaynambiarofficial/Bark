@@ -100,7 +100,7 @@ router.post("/", requirePermission("escalations:create"), async (request, respon
     await appendAudit(transaction, { actor, action: "escalation.created", entityType: "escalation", entityId: record.id, newValue: { reference: record.reference, category: record.category, ownerId: owner.id, status: record.status, priority: record.priority, tier: record.tier }, requestId: request.requestId, ipAddress: request.ip });
     return record;
   });
-  void sendEscalationUpdateEmail(created.id, "New escalation assigned");
+  void sendEscalationUpdateEmail(created.id, "New escalation raised");
   response.status(201).json({ data: created });
 });
 
@@ -147,7 +147,7 @@ router.post("/:id/status", requirePermission("escalations:comment"), async (requ
     await appendAudit(transaction, { actor, action: "escalation.status_changed", entityType: "escalation", entityId: id, previousValue: { status: current.status }, newValue: { status: input.status }, reason: input.reason, requestId: request.requestId, ipAddress: request.ip });
     return records;
   });
-  void sendEscalationUpdateEmail(id, `Status changed to ${input.status}`);
+  if (input.status === "Resolved") void sendEscalationUpdateEmail(id, "Escalation resolved");
   response.json({ data: updated });
 });
 
@@ -166,7 +166,6 @@ router.post("/:id/assign", requirePermission("escalations:assign"), async (reque
     await appendAudit(transaction, { actor, action: "escalation.assigned", entityType: "escalation", entityId: id, previousValue: { ownerId: current.ownerId }, newValue: { ownerId: owner.id }, reason: input.reason, requestId: request.requestId, ipAddress: request.ip });
     return records;
   });
-  void sendEscalationUpdateEmail(id, "Escalation owner changed");
   response.json({ data: updated });
 });
 
