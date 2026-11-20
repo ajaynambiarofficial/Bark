@@ -1,4 +1,4 @@
-import { ArrowLeft, CheckCircle2, FileText, Info, Paperclip, ShieldCheck, Trash2, UploadCloud, UserRound } from "lucide-react";
+import { ArrowLeft, CheckCircle2, FileText, Info, Mic, MicOff, Paperclip, ShieldCheck, Trash2, UploadCloud, UserRound } from "lucide-react";
 import { useMemo, useRef, useState, useEffect, type DragEvent, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../../auth/AuthContext";
@@ -28,10 +28,36 @@ interface FormState {
   appointmentId: string;
 }
 
+interface SpeechResultEvent {
+  resultIndex: number;
+  results: ArrayLike<{ 0: { transcript: string } }>;
+}
+interface SpeechRecognitionLike {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: SpeechResultEvent) => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+  abort(): void;
+}
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+type SpeechWindow = Window & { SpeechRecognition?: SpeechRecognitionConstructor; webkitSpeechRecognition?: SpeechRecognitionConstructor };
+
 const emptyForm: FormState = { issueType: "escalation", referenceType: "customer", category: "", module: "", channel: "", clinic: "", service: "", issueSubtype: "", customIssue: "", title: "", description: "", linkedTicketId: "", customerPhone: "", appointmentId: "" };
 
 function formatBytes(bytes: number) {
   return bytes < 1024 * 1024 ? `${Math.ceil(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function appendSpeech(base: string, transcript: string) {
+  const spoken = transcript.trim();
+  if (!spoken) return base;
+  const existing = base.trimEnd();
+  if (!existing) return spoken;
+  return `${existing}${/[.!?]$/.test(existing) ? " " : ". "}${spoken}`;
 }
 
 export function CreateEscalationPage() {
@@ -56,6 +82,20 @@ export function CreateEscalationPage() {
   const [draftRestored, setDraftRestored] = useState(Boolean(initialDraft));
   const [titleEdited, setTitleEdited] = useState(Boolean(initialDraft?.title || standardMode));
   const fileRef = useRef<HTMLInputElement>(null);
+  const speechRecognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const speechBaseDescriptionRef = useRef("");
+  const [isListening, setIsListening] = useState(false);
+  const [speechError, setSpeechError] = useState("");
+
+  useEffect(() => () => {
+    const recognition = speechRecognitionRef.current;
+    if (recognition) {
+      recognition.onend = null;
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition.abort();
+    }
+  }, []);
 
   useEffect(() => {
     const safeDraft = { ...form, customerPhone: "" };
@@ -76,6 +116,49 @@ export function CreateEscalationPage() {
     setForm((current) => ({ ...current, [key]: value }));
     setErrors((current) => { const next = { ...current }; delete next[key]; return next; });
   };
+
+  const startSpeechToText = () => {
+    if (speechRecognitionRef.current) return;
+    const speechWindow = window as SpeechWindow;
+    const SpeechRecognition = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setSpeechError("Speech-to-text isn’t supported in this browser. Try Chrome or Edge.");
+      return;
+    }
+    setSpeechError("");
+    speechBaseDescriptionRef.current = form.description;
+    const recognition = new SpeechRecognition();
+    recognition.lang = navigator.language || "en-IN";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.onresult = (event) => {
+      const transcript = Array.from(event.results).map((result) => result[0]?.transcript ?? "").join(" ").trim();
+      setValue("description", appendSpeech(speechBaseDescriptionRef.current, transcript));
+    };
+    recognition.onerror = (event) => {
+      const messages: Record<string, string> = {
+        "not-allowed": "Microphone access was blocked. Allow microphone access in your browser and try again.",
+        "service-not-allowed": "Speech recognition is blocked by the browser or device policy.",
+        "no-speech": "No speech was detected. Try speaking again.",
+        network: "Speech recognition couldn’t connect. Check your connection and try again.",
+      };
+      setSpeechError(messages[event.error] ?? "Speech recognition stopped unexpectedly. Try again.");
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+      speechRecognitionRef.current = null;
+    };
+    speechRecognitionRef.current = recognition;
+    setIsListening(true);
+    try { recognition.start(); }
+    catch {
+      setIsListening(false);
+      speechRecognitionRef.current = null;
+      setSpeechError("Couldn’t start speech recognition. Check microphone access and try again.");
+    }
+  };
+
+  const stopSpeechToText = () => speechRecognitionRef.current?.stop();
 
   const selectCategory = (nextCategory: EscalationCategory) => {
     setForm((current) => ({ ...current, category: nextCategory, module: "", channel: "", clinic: "", service: "", issueSubtype: "", customIssue: "", title: titleEdited ? current.title : "" }));
@@ -173,7 +256,16 @@ export function CreateEscalationPage() {
 
         <Card className="p-5 sm:p-6">
           <h2 className="font-semibold text-primary">Issue details</h2>
-          <div className="mt-4 space-y-4"><Field label="Issue title" required error={errors.title}><input className={fieldClass} value={form.title} onChange={(event) => { setTitleEdited(true); setValue("title", event.target.value); }} placeholder="Short, specific summary" /></Field><Field label="Description" required={form.issueType === "escalation"} error={errors.description} hint="Describe what happened, what was expected, and what assistance is required."><textarea className={`${fieldClass} min-h-32 resize-y py-3`} value={form.description} onChange={(event) => setValue("description", event.target.value)} /></Field></div>
+          <div className="mt-4 space-y-4"><Field label="Issue title" required error={errors.title}><input className={fieldClass} value={form.title} onChange={(event) => { setTitleEdited(true); setValue("title", event.target.value); }} placeholder="Short, specific summary" /></Field>
+            <div className="block">
+              <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2"><label htmlFor="issue-description" className={labelClass}>Description{form.issueType === "escalation" && <span className="text-error"> *</span>}</label><Button type="button" variant={isListening ? "secondary" : "ghost"} onClick={isListening ? stopSpeechToText : startSpeechToText} icon={isListening ? <MicOff size={16} /> : <Mic size={16} />}>{isListening ? "Stop dictation" : "Speak description"}</Button></div>
+              <textarea id="issue-description" className={`${fieldClass} min-h-32 resize-y py-3`} value={form.description} onChange={(event) => setValue("description", event.target.value)} aria-invalid={Boolean(errors.description)} aria-describedby="description-hint" readOnly={isListening} />
+              <span id="description-hint" className="mt-1 block text-xs text-muted">Describe what happened, what was expected, and what assistance is required. Spoken words are added to any existing text.</span>
+              {isListening && <span role="status" className="mt-1 block text-xs font-medium text-brand">Listening… speak clearly, then select Stop dictation.</span>}
+              {speechError && <span role="alert" className="mt-1 block text-sm text-error">{speechError}</span>}
+              {errors.description && <span role="alert" className="mt-1 block text-sm text-error">{errors.description}</span>}
+            </div>
+          </div>
         </Card>
 
         <Card className="p-5 sm:p-6">
@@ -188,7 +280,7 @@ export function CreateEscalationPage() {
 
         {errors.submit && <p role="alert" className="rounded-[var(--radius-md)] border border-error-border bg-error-soft p-4 text-sm text-error">{errors.submit}</p>}
         {success && <p role="status" className="flex items-center gap-2 rounded-[var(--radius-md)] bg-success-soft p-4 text-sm font-semibold text-success"><CheckCircle2 size={18} />{success}</p>}
-        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><Button variant="secondary" onClick={() => navigate("/escalations")}>Cancel</Button><Button type="submit" disabled={!allowed || pending} icon={pending ? <span className="size-4 animate-spin rounded-full border-2 border-current border-r-transparent motion-reduce:animate-none" /> : <CheckCircle2 size={17} />}>{pending ? "Creating…" : `Create ${form.issueType === "standard" ? "Issue" : "Escalation"}`}</Button></div>
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><Button variant="secondary" onClick={() => navigate("/escalations")}>Cancel</Button><Button type="submit" disabled={!allowed || pending || isListening} icon={pending ? <span className="size-4 animate-spin rounded-full border-2 border-current border-r-transparent motion-reduce:animate-none" /> : <CheckCircle2 size={17} />}>{pending ? "Creating…" : isListening ? "Stop dictation to submit" : `Create ${form.issueType === "standard" ? "Issue" : "Escalation"}`}</Button></div>
       </form>
       <p className="flex items-start gap-2 text-xs text-muted"><Info size={14} className="mt-0.5 shrink-0" />Frontend permissions and routing are demonstration behavior only. A future backend must independently enforce authorization and audit integrity.</p>
     </div>
