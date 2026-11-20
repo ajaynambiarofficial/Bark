@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { and, asc, desc, eq, gt, ilike, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
+import { aliasedTable, and, asc, desc, eq, gt, ilike, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/client.js";
-import { applicationSettings, assignmentRules, auditEvents, clinicServices, clinics, featureFlags, offers, permissions, rolePermissions, roles, services, sessions, slaPolicies, userClinics, userPermissions, users } from "../db/schema.js";
+import { applicationSettings, assignmentRules, auditEvents, clinicServices, clinics, escalations, featureFlags, offers, permissions, rolePermissions, roles, services, sessions, slaPolicies, userClinics, userPermissions, users } from "../db/schema.js";
 import { hashPassword } from "../auth/password.js";
 import { requireClearance, requirePermission } from "../middleware/auth.js";
 import { ApiError } from "../lib/errors.js";
@@ -10,10 +10,15 @@ import { parseBody, parseQuery } from "../lib/validation.js";
 import { appendAudit } from "../services/audit.service.js";
 
 const router = Router();
+const adminEscalationReporter = aliasedTable(users, "admin_escalation_reporter");
+const adminEscalationReporterRole = aliasedTable(roles, "admin_escalation_reporter_role");
+const adminEscalationOwner = aliasedTable(users, "admin_escalation_owner");
+const adminEscalationOwnerRole = aliasedTable(roles, "admin_escalation_owner_role");
 const uuid = z.string().uuid();
 const clinicScopedRoles = new Set(["clinic-front-desk", "clinic-manager", "doctor", "groomer", "zonal-head"]);
 const reason = z.string().trim().min(3).max(1000);
 const listSchema = z.object({ search: z.string().trim().max(120).optional(), status: z.enum(["active", "inactive", "suspended"]).optional(), roleId: uuid.optional(), limit: z.coerce.number().int().min(1).max(100).default(30), offset: z.coerce.number().int().min(0).default(0) });
+const dashboardListSchema = z.object({ limit: z.coerce.number().int().min(1).max(100).default(100), offset: z.coerce.number().int().min(0).default(0) });
 const userCreateSchema = z.object({ employeeCode: z.string().trim().min(2).max(80), email: z.string().trim().email().transform((value) => value.toLowerCase()), displayName: z.string().trim().min(2).max(160), password: z.string().min(14).max(1024), roleId: uuid, department: z.string().trim().min(2).max(120), assignment: z.string().trim().min(2).max(160), clearanceLevel: z.number().int().min(1).max(100).optional(), clinicIds: z.array(uuid).max(100).default([]) });
 const userUpdateSchema = z.object({ employeeCode: z.string().trim().min(2).max(80).optional(), email: z.string().trim().email().transform((value) => value.toLowerCase()).optional(), displayName: z.string().trim().min(2).max(160).optional(), contactPhone: z.string().trim().max(40).nullable().optional(), profileBio: z.string().trim().max(500).nullable().optional(), roleId: uuid.optional(), department: z.string().trim().min(2).max(120).optional(), assignment: z.string().trim().min(2).max(160).optional(), accountStatus: z.enum(["active", "inactive", "suspended"]).optional(), clearanceLevel: z.number().int().min(1).max(100).optional(), clinicIds: z.array(uuid).max(100).optional(), reason });
 const roleSchema = z.object({ key: z.string().trim().regex(/^[a-z][a-z0-9-]{1,62}$/), name: z.string().trim().min(2).max(120), description: z.string().trim().max(1000).default(""), clearanceLevel: z.number().int().min(1).max(100), permissionKeys: z.array(z.string().min(1)).default([]) });
@@ -29,6 +34,23 @@ async function assertAssignableRole(roleId: string, actorClearance: number) {
 }
 
 router.use(requireClearance(90));
+
+router.get("/escalation-dashboard", requirePermission("admin:users"), async (request, response) => {
+  const input = parseQuery(request, dashboardListSchema);
+  const records = await db.select({
+    escalation: escalations,
+    reporter: { id: adminEscalationReporter.id, displayName: adminEscalationReporter.displayName, department: adminEscalationReporter.department, roleLabel: adminEscalationReporterRole.name },
+    owner: { id: adminEscalationOwner.id, displayName: adminEscalationOwner.displayName, department: adminEscalationOwner.department, roleLabel: adminEscalationOwnerRole.name },
+    clinic: { id: clinics.id, name: clinics.name },
+  }).from(escalations)
+    .innerJoin(adminEscalationReporter, eq(escalations.reporterId, adminEscalationReporter.id))
+    .innerJoin(adminEscalationReporterRole, eq(adminEscalationReporter.roleId, adminEscalationReporterRole.id))
+    .innerJoin(adminEscalationOwner, eq(escalations.ownerId, adminEscalationOwner.id))
+    .innerJoin(adminEscalationOwnerRole, eq(adminEscalationOwner.roleId, adminEscalationOwnerRole.id))
+    .leftJoin(clinics, eq(escalations.clinicId, clinics.id))
+    .where(isNull(escalations.deletedAt)).orderBy(desc(escalations.updatedAt)).limit(input.limit).offset(input.offset);
+  response.json({ data: records, meta: { limit: input.limit, offset: input.offset, returned: records.length } });
+});
 
 router.get("/configuration/catalog", requirePermission("admin:settings"), async (_request, response) => {
   const [clinicRows, serviceRows] = await Promise.all([
