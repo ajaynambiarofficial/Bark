@@ -3,7 +3,8 @@ import { env } from "./config/env.js";
 import { closeDatabase } from "./db/client.js";
 import { logger } from "./lib/logger.js";
 
-const server = createApp().listen(env.PORT, "127.0.0.1", () => {
+const host = env.isProduction ? "0.0.0.0" : "127.0.0.1";
+const server = createApp().listen(env.PORT, host, () => {
   logger.info({ port: env.PORT, environment: env.NODE_ENV }, "Bark API listening");
 });
 
