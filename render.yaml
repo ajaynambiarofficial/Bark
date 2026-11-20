@@ -15,6 +15,10 @@ services:
         sync: false
       - key: APP_ORIGIN
         sync: false
+      - key: GOOGLE_CLIENT_ID
+        value: 29732196650-gu3aphpdp733irmkmsi3jr4j06fg592b.apps.googleusercontent.com
+      - key: VITE_GOOGLE_CLIENT_ID
+        value: 29732196650-gu3aphpdp733irmkmsi3jr4j06fg592b.apps.googleusercontent.com
       - key: GOD_EMAIL
         sync: false
       - key: GOD_PASSWORD
