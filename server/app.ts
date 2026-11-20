@@ -29,11 +29,15 @@ export function createApp() {
   app.use(helmet({
     contentSecurityPolicy: {
       directives: {
-        connectSrc: ["'self'", "https://docs.google.com"],
+        connectSrc: ["'self'", "https://docs.google.com", "https://accounts.google.com/gsi/"],
+        frameSrc: ["'self'", "https://accounts.google.com/gsi/"],
+        scriptSrc: ["'self'", "https://accounts.google.com/gsi/client"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https:"],
         // Local LAN testing uses HTTP; upgrading same-origin bundles to HTTPS leaves the SPA blank.
         upgradeInsecureRequests: env.APP_ORIGIN.startsWith("https://") ? [] : null,
       },
     },
+    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
     crossOriginResourcePolicy: { policy: "same-site" },
   }));
   app.use((request, response, next) => {
