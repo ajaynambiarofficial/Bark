@@ -33,7 +33,9 @@ export function LoginPage() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isDemoMode = import.meta.env.VITE_USE_MOCK_AUTH === "true";
-  const googleClientId = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined)?.trim();
+  // This is a public OAuth client identifier. Keep the checked-in fallback so
+  // a missing Render build variable cannot silently remove Google sign-in.
+  const googleClientId = ((import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined)?.trim() || "29732196650-gu3aphpdp733irmkmsi3jr4j06fg592b.apps.googleusercontent.com");
   const googleButtonRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
