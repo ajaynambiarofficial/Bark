@@ -57,6 +57,13 @@
       "when": 1795143900466,
       "tag": "0007_fast_masque",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795575658344,
+      "tag": "0008_team_email",
+      "breakpoints": true
     }
   ]
 }

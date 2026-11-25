@@ -280,6 +280,18 @@ export const noticeAcknowledgements = pgTable("notice_acknowledgements", {
   acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [primaryKey({ columns: [table.noticeId, table.userId] }), index("notice_acknowledgements_user_idx").on(table.userId)]);
 
+export const teamEmails = pgTable("team_emails", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  createdBy: uuid("created_by").notNull().references(() => users.id),
+  subject: varchar("subject", { length: 200 }).notNull().default(""),
+  body: text("body").notNull().default(""),
+  recipientUserIds: jsonb("recipient_user_ids").$type<string[]>().notNull().default([]),
+  status: varchar("status", { length: 16 }).$type<"draft" | "sending" | "sent" | "failed">().notNull().default("draft"),
+  providerMessageId: varchar("provider_message_id", { length: 500 }),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+  ...timestamps,
+}, (table) => [index("team_emails_author_updated_idx").on(table.createdBy, table.updatedAt)]);
+
 export const assignmentRules = pgTable("assignment_rules", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: varchar("name", { length: 160 }).notNull(),

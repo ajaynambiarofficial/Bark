@@ -1,9 +1,10 @@
-import { AlertCircle, BookOpen, CalendarDays, ChevronsLeft, ChevronsRight, FileText, House, Megaphone, MessageCircle, Pill, Settings2, Stethoscope, TestTube, X } from "lucide-react";
+import { AlertCircle, BookOpen, CalendarDays, ChevronsLeft, ChevronsRight, FileText, House, Mail, Megaphone, MessageCircle, Pill, Settings2, Stethoscope, TestTube, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { BarkLogo } from "../brand/BarkLogo";
 import { SidebarItem } from "./SidebarItem";
 import type { Employee } from "../../types/auth";
 import { Avatar } from "../ui/Avatar";
+import { canSendTeamEmail } from "../../auth/teamEmailAccess";
 
 interface SidebarProps {
   employee: Employee;
@@ -91,6 +92,7 @@ export function Sidebar({
         <SidebarItem to="/escalations" label="Escalations" icon={AlertCircle} collapsed={collapsed} onNavigate={onCloseMobile} />
         <SidebarItem to="/guide" label="Guide" icon={BookOpen} collapsed={collapsed} onNavigate={onCloseMobile} />
         <SidebarItem to="/notice-board" label="Notice Board" icon={Megaphone} collapsed={collapsed} onNavigate={onCloseMobile} />
+        {canSendTeamEmail(employee.role) && <SidebarItem to="/team-email" label="Team Email" icon={Mail} collapsed={collapsed} onNavigate={onCloseMobile} />}
         {(employee.role === "god" || employee.role === "system-administrator") && <SidebarItem to="/admin" label="Admin Control" icon={Settings2} collapsed={collapsed} onNavigate={onCloseMobile} />}
         <div className="my-3 border-t border-default" aria-hidden="true" />
         {!collapsed && <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">Pawcare</p>}

@@ -11,6 +11,7 @@ const pageMeta: Record<string, { title: string; subtitle: string }> = {
   "/bookings": { title: "Bookings", subtitle: "Bookings workspace" },
   "/calendar": { title: "Calendar", subtitle: "Team schedule" },
   "/guide": { title: "Guide", subtitle: "Escalations guide" },
+  "/team-email": { title: "Team Email", subtitle: "Draft and send team updates" },
   "/pawcare/booking": { title: "Booking", subtitle: "Pawcare" },
   "/pawcare/appointments": { title: "Appointments", subtitle: "Pawcare" },
   "/pawcare/quotes": { title: "Quote generator", subtitle: "Pawcare" },

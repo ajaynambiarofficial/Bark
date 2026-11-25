@@ -23,6 +23,7 @@ import { ForgotPasswordPage } from "../pages/ForgotPasswordPage";
 import { FeatureRequestPage } from "../features/escalations/FeatureRequestPage";
 import { ReportBugPage } from "../features/escalations/ReportBugPage";
 import { NoticeBoardPage } from "../pages/NoticeBoardPage";
+import { TeamEmailPage } from "../pages/TeamEmailPage";
 
 function ProtectedRoute() {
   const { employee, isRestoring } = useAuth();
@@ -53,6 +54,7 @@ export const router = createBrowserRouter([
           { path: "/escalations", element: <EscalationsPage /> },
           { path: "/guide", element: <GuidePage /> },
           { path: "/notice-board", element: <NoticeBoardPage /> },
+          { path: "/team-email", element: <TeamEmailPage /> },
           { path: "/pawcare/booking", element: <PawcareBookingPage /> },
           { path: "/pawcare/appointments", element: <PawcareAppointmentsPage /> },
           { path: "/pawcare/quotes", element: <QuoteGeneratorPage /> },
