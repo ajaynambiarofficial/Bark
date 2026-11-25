@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, BarChart3, CalendarDays, CheckCircle2, ChevronRight, Home, LockKeyhole, Plus, ShieldCheck, Sparkles, Users } from "lucide-react";
+import { ArrowRight, CheckCircle2, LockKeyhole, ShieldCheck } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router";
 import { Link } from "react-router";
@@ -93,44 +93,27 @@ export function LoginPage() {
 
   return (
     <main className="min-h-dvh bg-app lg:grid lg:grid-cols-[minmax(360px,0.9fr)_minmax(520px,1.1fr)]">
-      <section className="relative hidden min-h-dvh overflow-hidden bg-brand-deep px-10 py-10 text-white lg:block xl:px-16 xl:py-14">
+      <section className="relative hidden min-h-dvh overflow-hidden bg-brand-deep px-10 py-10 text-white lg:flex lg:flex-col xl:px-16 xl:py-14">
         <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
           <div className="brand-pattern absolute inset-0 opacity-[0.06]" />
           <div className="absolute -right-40 -top-44 size-[34rem] rounded-full bg-lime-300/12 blur-3xl" />
           <div className="absolute -bottom-56 -left-36 size-[28rem] rounded-full bg-emerald-400/15 blur-3xl" />
           <div className="absolute right-[-16%] top-[32%] h-px w-[78%] rotate-[-28deg] bg-gradient-to-r from-transparent via-lime-200/40 to-transparent" />
         </div>
-        <div className="relative z-10 flex items-center justify-between">
+        <div className="relative z-10 flex items-center gap-3">
           <BarkLogo inverse />
-          <span className="rounded-full border border-lime-200/30 bg-lime-200/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-lime-100">Operations OS</span>
+          <span className="h-5 w-px bg-white/20" aria-hidden="true" />
+          <span className="text-xs font-medium tracking-wide text-white/55">Supertails</span>
         </div>
-        <div className="relative z-10 mt-[15vh] max-w-[47%] pb-3 xl:mt-[16vh]">
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.07] px-3 py-1.5 text-xs font-medium text-white/80"><Sparkles size={14} className="text-lime-200" /> Supertails internal workspace</span>
-          <p className="mt-6 max-w-lg text-[clamp(2.4rem,5vw,4.5rem)] font-semibold leading-[0.98] tracking-[-0.06em]">Calm operations.<br /><span className="text-lime-200">Clear ownership.</span></p>
-          <p className="mt-5 max-w-md text-[15px] leading-7 text-white/65">One workspace for bookings, escalations, clinics, and the teams that keep every tail moving.</p>
-          <div className="mt-7 flex flex-wrap gap-2.5 text-xs text-white/80">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-black/10 px-3 py-2"><CheckCircle2 size={14} className="text-lime-200" /> Role-aware</span>
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-black/10 px-3 py-2"><ShieldCheck size={14} className="text-lime-200" /> Company access</span>
-          </div>
-        </div>
-        <div className="absolute bottom-24 right-3 z-10 w-[53%] max-w-[430px] xl:right-8" aria-label="Bark workspace preview">
-          <div className="absolute -inset-5 rounded-[2rem] bg-lime-200/10 blur-2xl" />
-          <div className="relative rotate-[2deg] rounded-[1.35rem] border border-lime-100/25 bg-[#0b2b20]/90 p-2 shadow-2xl shadow-black/30 backdrop-blur-xl">
-            <div className="rounded-[1rem] border border-white/10 bg-[#123b2b] p-3">
-              <div className="flex items-center gap-2 border-b border-white/10 pb-3 text-[10px] text-white/65">
-                <div className="grid size-5 place-items-center rounded-md bg-lime-300 text-[#123b2b]"><Home size={11} /></div>
-                <span className="font-semibold text-white/90">Bark workspace</span>
-                <span className="ml-auto rounded-full bg-white/10 px-2 py-1">Today</span>
-              </div>
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                <div className="rounded-lg border border-white/10 bg-white/[0.06] p-2"><CalendarDays size={13} className="text-lime-200" /><p className="mt-2 text-[9px] text-white/55">Bookings</p><p className="text-lg font-semibold">335</p></div>
-                <div className="rounded-lg border border-white/10 bg-white/[0.06] p-2"><AlertTriangle size={13} className="text-orange-300" /><p className="mt-2 text-[9px] text-white/55">Escalations</p><p className="text-lg font-semibold">18</p></div>
-                <div className="rounded-lg border border-white/10 bg-white/[0.06] p-2"><Users size={13} className="text-lime-200" /><p className="mt-2 text-[9px] text-white/55">Team online</p><p className="text-lg font-semibold">24</p></div>
-              </div>
-              <div className="mt-2 grid grid-cols-[1.4fr_0.8fr] gap-2">
-                <div className="rounded-lg border border-white/10 bg-white/[0.06] p-3"><div className="flex items-center justify-between"><p className="text-[10px] font-medium">Today's overview</p><BarChart3 size={13} className="text-lime-200" /></div><svg className="mt-2 h-16 w-full" viewBox="0 0 220 64" fill="none" aria-hidden="true"><path d="M2 55C25 48 29 39 49 44C70 49 74 25 96 31C119 37 120 17 143 22C165 27 167 11 188 18C200 22 207 14 218 7V64H2V55Z" fill="url(#chartFill)" /><path d="M2 55C25 48 29 39 49 44C70 49 74 25 96 31C119 37 120 17 143 22C165 27 167 11 188 18C200 22 207 14 218 7" stroke="#b9ff72" strokeWidth="2" strokeLinecap="round" /><defs><linearGradient id="chartFill" x1="110" y1="7" x2="110" y2="64" gradientUnits="userSpaceOnUse"><stop stopColor="#b9ff72" stopOpacity=".3" /><stop offset="1" stopColor="#b9ff72" stopOpacity="0" /></linearGradient></defs></svg></div>
-                <div className="space-y-2"><button type="button" className="flex w-full items-center gap-2 rounded-lg border border-white/10 bg-white/[0.06] p-2 text-left text-[10px] text-white/80"><Plus size={13} className="text-lime-200" /> New booking <ChevronRight size={12} className="ml-auto" /></button><button type="button" className="flex w-full items-center gap-2 rounded-lg border border-white/10 bg-white/[0.06] p-2 text-left text-[10px] text-white/80"><AlertTriangle size={13} className="text-orange-300" /> Raise escalation <ChevronRight size={12} className="ml-auto" /></button></div>
-              </div>
+        <div className="relative z-10 flex flex-1 items-center">
+          <div className="max-w-2xl pb-8">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-lime-200/80">Bark / Supertails</p>
+            <div className="mt-7 h-px w-16 bg-lime-200/70" aria-hidden="true" />
+            <p className="mt-7 max-w-xl text-[clamp(2.5rem,5vw,4.65rem)] font-semibold leading-[0.97] tracking-[-0.065em]">The Supertails<br /><span className="text-lime-200">SuperTool.</span></p>
+            <p className="mt-6 max-w-md text-[15px] leading-7 text-white/65">Bookings, escalations, and team updates brought together for the people keeping every tail moving.</p>
+            <div className="mt-9 grid max-w-md grid-cols-2 gap-x-7 gap-y-3 border-t border-white/15 pt-5 text-sm text-white/75">
+              <span className="inline-flex items-center gap-2"><CheckCircle2 size={16} className="text-lime-200" /> Role-aware access</span>
+              <span className="inline-flex items-center gap-2"><ShieldCheck size={16} className="text-lime-200" /> Company workspace</span>
             </div>
           </div>
         </div>
