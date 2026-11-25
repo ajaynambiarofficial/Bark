@@ -24,7 +24,7 @@ export function BarkLogo({ compact = false, inverse = false }: BarkLogoProps) {
           <img
             src="/brand/bark-by-supertails.png"
             alt="Bark by Supertails"
-            className={`absolute left-1/2 top-1/2 w-[154px] max-w-none -translate-x-1/2 -translate-y-1/2 ${inverse ? "brightness-0 invert" : ""}`}
+            className={`bark-logo-image absolute left-1/2 top-1/2 w-[154px] max-w-none -translate-x-1/2 -translate-y-1/2 ${inverse ? "bark-logo-image-inverse" : ""}`}
           />
         </span>
       )}

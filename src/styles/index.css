@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+.bark-logo-image-inverse,
+:root[data-theme="dark"] .bark-logo-image {
+  filter: brightness(0) invert(1);
+}
+
 @theme inline {
   --color-app: var(--app-background);
   --color-sidebar: var(--sidebar-background);
