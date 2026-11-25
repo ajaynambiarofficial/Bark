@@ -30,7 +30,9 @@ export function createApp() {
   app.use(helmet({
     contentSecurityPolicy: {
       directives: {
-        connectSrc: ["'self'", "https://docs.google.com", "https://accounts.google.com/gsi/"],
+        // Google Sheets export URLs redirect from docs.google.com to a dynamic
+        // googleusercontent.com host before returning the CSV response.
+        connectSrc: ["'self'", "https://docs.google.com", "https://*.googleusercontent.com", "https://accounts.google.com/gsi/"],
         frameSrc: ["'self'", "https://accounts.google.com/gsi/"],
         scriptSrc: ["'self'", "https://accounts.google.com/gsi/client"],
         styleSrc: ["'self'", "'unsafe-inline'", "https:"],
