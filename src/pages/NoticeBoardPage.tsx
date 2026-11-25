@@ -157,7 +157,7 @@ export function NoticeBoardPage() {
       </Card> : <div className="space-y-4">{orderedNotices.map((notice) => {
         const style = typeStyles[notice.type];
         const mayArchive = canPublish || notice.createdBy === employee?.id;
-        return <Card key={notice.id} className={`overflow-hidden border-l-4 ${style.border}`}>
+        return <Card key={notice.id} id={notice.id} className={`overflow-hidden border-l-4 ${style.border}`}>
           <article className="p-5 sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 flex-1">

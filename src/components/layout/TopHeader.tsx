@@ -1,6 +1,7 @@
 import { Menu } from "lucide-react";
 import { useLocation } from "react-router";
 import { UserProfileMenu } from "./UserProfileMenu";
+import { NoticeNotifications } from "./NoticeNotifications";
 
 interface TopHeaderProps {
   onOpenMobile(): void;
@@ -43,7 +44,10 @@ export function TopHeader({ onOpenMobile }: TopHeaderProps) {
           <p className="hidden text-xs text-muted sm:block">{current.subtitle}</p>
         </div>
       </div>
-      <UserProfileMenu />
+      <div className="flex items-center gap-1.5">
+        <NoticeNotifications />
+        <UserProfileMenu />
+      </div>
     </header>
   );
 }
