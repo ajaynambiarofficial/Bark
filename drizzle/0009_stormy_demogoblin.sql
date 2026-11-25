@@ -1,0 +1,1 @@
+ALTER TABLE "escalations" ADD COLUMN "customer_phone" varchar(30);

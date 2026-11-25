@@ -318,6 +318,7 @@ export const escalations = pgTable("escalations", {
   issueSubtype: varchar("issue_subtype", { length: 180 }).notNull(),
   customIssue: text("custom_issue"),
   linkedTicketId: varchar("linked_ticket_id", { length: 80 }),
+  customerPhone: varchar("customer_phone", { length: 30 }),
   customerPhoneMasked: varchar("customer_phone_masked", { length: 30 }),
   appointmentId: varchar("appointment_id", { length: 80 }),
   attachmentMetadata: jsonb("attachment_metadata").$type<Array<{ id: string; name: string; size: number; type: string }>>().notNull().default([]),

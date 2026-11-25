@@ -60,7 +60,7 @@ function mapRecord(source: ApiRecord, actor: Employee): Escalation {
     module: row.module ? String(row.module) : undefined, channel: row.channel ? String(row.channel) : undefined,
     clinic: typeof source.clinic === "string" ? source.clinic : ((source.clinic as { name?: string } | null)?.name ?? undefined),
     service: row.service ? String(row.service) : undefined, issueSubtype: String(row.issueSubtype), customIssue: row.customIssue ? String(row.customIssue) : undefined,
-    linkedTicketId: row.linkedTicketId ? String(row.linkedTicketId) : undefined, customerPhone: row.customerPhoneMasked ? String(row.customerPhoneMasked) : undefined,
+    linkedTicketId: row.linkedTicketId ? String(row.linkedTicketId) : undefined, customerPhone: row.customerPhone ? String(row.customerPhone) : (row.customerPhoneMasked ? String(row.customerPhoneMasked) : undefined),
     appointmentId: row.appointmentId ? String(row.appointmentId) : undefined,
     reporter, originatingDepartment: String(row.originatingDepartment), responsibleDepartment: String(row.responsibleDepartment), assignedTeam: String(row.assignedTeam),
     accountableOwner: owner, collaborators: [], tier: Number(row.tier) as EscalationTier, priority: String(row.priority) as Escalation["priority"], status: String(row.status) as EscalationStatus,

@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRightLeft, Bell, CheckCircle2, Clock3, FileText, MessageSquare, Printer, RotateCcw, ShieldAlert, TrendingUp, UserRound } from "lucide-react";
+import { ArrowLeft, ArrowRightLeft, Bell, CheckCircle2, Clock3, Eye, EyeOff, FileText, MessageSquare, Printer, RotateCcw, ShieldAlert, TrendingUp, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useParams } from "react-router";
@@ -45,6 +45,7 @@ export function EscalationDetailPage() {
   const [comment, setComment] = useState("");
   const [visibility, setVisibility] = useState<CommentVisibility>("internal");
   const [ownerId, setOwnerId] = useState("");
+  const [showCustomerPhone, setShowCustomerPhone] = useState(false);
 
   useEffect(() => {
     if (!employee) return;
@@ -102,7 +103,7 @@ export function EscalationDetailPage() {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
         <div className="space-y-6">
           <Card className="p-5 sm:p-6"><h2 className="font-semibold text-primary">Issue information</h2><dl className="mt-5 grid gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
-            <Info term="Reporter" value={item.reporter.displayName} detail={item.reporter.roleLabel} /><Info term="Originating department" value={item.originatingDepartment} /><Info term="Assigned clinic" value={item.clinic ?? "Not applicable"} /><Info term="Responsible department" value={item.responsibleDepartment} /><Info term="Assigned team" value={item.assignedTeam} /><Info term="Accountable owner" value={item.accountableOwner.displayName} detail={item.accountableOwner.roleLabel} /><Info term="Linked ticket ID" value={item.linkedTicketId ?? "Internal issue"} /><Info term="Appointment ID" value={item.appointmentId ?? "Not provided"} /><Info term="Customer phone" value={maskCustomerPhone(item.customerPhone) ?? "Not applicable"} /><Info term="Category" value={categoryDefinitions[item.category].name} /><Info term="Channel / Service" value={item.channel ?? item.service ?? item.module ?? "Direct issue"} /><Info term="Issue subtype" value={item.customIssue || item.issueSubtype} /><Info term="Created" value={formatDate(item.createdAt)} /><Info term="Last updated" value={formatDate(item.updatedAt)} /></dl></Card>
+            <Info term="Reporter" value={item.reporter.displayName} detail={item.reporter.roleLabel} /><Info term="Originating department" value={item.originatingDepartment} /><Info term="Assigned clinic" value={item.clinic ?? "Not applicable"} /><Info term="Responsible department" value={item.responsibleDepartment} /><Info term="Assigned team" value={item.assignedTeam} /><Info term="Accountable owner" value={item.accountableOwner.displayName} detail={item.accountableOwner.roleLabel} /><Info term="Linked ticket ID" value={item.linkedTicketId ?? "Internal issue"} /><Info term="Appointment ID" value={item.appointmentId ?? "Not provided"} /><CustomerPhoneInfo value={item.customerPhone} shown={showCustomerPhone} onToggle={() => setShowCustomerPhone((current) => !current)} /><Info term="Category" value={categoryDefinitions[item.category].name} /><Info term="Channel / Service" value={item.channel ?? item.service ?? item.module ?? "Direct issue"} /><Info term="Issue subtype" value={item.customIssue || item.issueSubtype} /><Info term="Created" value={formatDate(item.createdAt)} /><Info term="Last updated" value={formatDate(item.updatedAt)} /></dl></Card>
           <Card className="p-5 sm:p-6"><h2 className="font-semibold text-primary">Description</h2><p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-secondary">{item.description || "No additional description was supplied."}</p></Card>
           <Card className="p-5 sm:p-6"><h2 className="font-semibold text-primary">Attachments</h2>{item.attachments.length ? <ul className="mt-4 space-y-2">{item.attachments.map((attachment) => <li key={attachment.id} className="flex items-center gap-3 rounded-[var(--radius-md)] border border-default p-3"><FileText size={18} className="text-muted" /><div><p className="text-sm font-semibold text-primary">{attachment.name}</p><p className="text-xs text-muted">{Math.ceil(attachment.size / 1024)} KB · metadata only, file not stored</p></div></li>)}</ul> : <p className="mt-3 text-sm text-muted">No attachment metadata is recorded.</p>}</Card>
           <Card className="p-5 sm:p-6"><h2 className="font-semibold text-primary">Comments</h2>{item.comments.length ? <ul className="mt-4 space-y-4">{item.comments.map((entry) => <li key={entry.id} className="flex gap-3"><Avatar name={entry.author.displayName} size="sm" /><div className="min-w-0 flex-1 rounded-[var(--radius-md)] bg-subtle p-3"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-semibold text-primary">{entry.author.displayName}</p><span className="text-xs text-muted">{entry.visibility === "internal" ? "Internal" : "Shared with involved teams"} · {formatDate(entry.createdAt)}</span></div><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-secondary">{entry.body}</p></div></li>)}</ul> : <p className="mt-3 text-sm text-muted">No comments yet.</p>}</Card>
@@ -125,7 +126,7 @@ export function EscalationDetailPage() {
           <PrintInfo term="Assigned clinic" value={item.clinic ?? "Not applicable"} />
           <PrintInfo term="Created" value={formatDate(item.createdAt)} />
           <PrintInfo term="Last updated" value={formatDate(item.updatedAt)} />
-          <PrintInfo term="Customer phone" value={maskCustomerPhone(item.customerPhone) ?? "Not applicable"} />
+          <PrintInfo term="Customer phone" value={item.customerPhone ?? "Not applicable"} />
         </dl>
         <PrintSection title="Description"><p>{item.description || "No additional description was supplied."}</p></PrintSection>
         <PrintSection title="Comments">{item.comments.length ? <div className="print-list">{item.comments.map((entry) => <div key={entry.id}><p className="print-item-title">{entry.author.displayName} <span>· {entry.visibility === "internal" ? "Internal" : "Shared with involved teams"}</span></p><p>{entry.body}</p><p className="print-meta">{formatDate(entry.createdAt)}</p></div>)}</div> : <p>No comments yet.</p>}</PrintSection>
@@ -169,6 +170,11 @@ export function EscalationDetailPage() {
 
 function Info({ term, value, detail }: { term: string; value: string; detail?: string | undefined }) {
   return <div><dt className="text-xs font-medium text-muted">{term}</dt><dd className="mt-1 text-sm font-semibold text-primary">{value}</dd>{detail && <p className="mt-0.5 text-xs text-secondary">{detail}</p>}</div>;
+}
+
+function CustomerPhoneInfo({ value, shown, onToggle }: { value: string | undefined; shown: boolean; onToggle(): void }) {
+  const displayValue = value ? (shown ? value : maskCustomerPhone(value)) : "Not applicable";
+  return <div><dt className="text-xs font-medium text-muted">Customer phone</dt><dd className="mt-1 flex items-center gap-2 text-sm font-semibold text-primary"><span>{displayValue}</span>{value && <button type="button" onClick={onToggle} className="inline-flex size-7 items-center justify-center rounded-[var(--radius-sm)] text-secondary hover:bg-hover hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" aria-label={shown ? "Hide customer phone number" : "Show customer phone number"} title={shown ? "Hide customer number" : "Show customer number"}>{shown ? <EyeOff size={15} /> : <Eye size={15} />}</button>}</dd></div>;
 }
 
 function ReasonField({ value, onChange, label }: { value: string; onChange(value: string): void; label: string }) {

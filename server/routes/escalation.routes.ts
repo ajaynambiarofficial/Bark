@@ -90,7 +90,7 @@ router.post("/", requirePermission("escalations:create"), async (request, respon
   const created = await db.transaction(async (transaction) => {
     const [record] = await transaction.insert(escalations).values({
       reference: reference(), issueType: input.issueType, referenceType: input.referenceType, title: input.title, description: input.description, category: input.category, module: input.module ?? null, channel: input.channel ?? null, service: input.service ?? null,
-      issueSubtype: input.issueSubtype, customIssue: input.customIssue ?? null, linkedTicketId: input.linkedTicketId?.toUpperCase() ?? null, customerPhoneMasked: maskPhone(input.customerPhone), appointmentId: input.appointmentId ?? null, attachmentMetadata: input.attachments.map((attachment) => ({ ...attachment, id: crypto.randomUUID() })), clinicId: input.clinicId ?? null,
+      issueSubtype: input.issueSubtype, customIssue: input.customIssue ?? null, linkedTicketId: input.linkedTicketId?.toUpperCase() ?? null, customerPhone: input.customerPhone ?? null, customerPhoneMasked: maskPhone(input.customerPhone), appointmentId: input.appointmentId ?? null, attachmentMetadata: input.attachments.map((attachment) => ({ ...attachment, id: crypto.randomUUID() })), clinicId: input.clinicId ?? null,
       reporterId: actor.userId, ownerId: owner.id, originatingDepartment: actor.department, responsibleDepartment: owner.department, assignedTeam: rule.team ?? owner.department, tier: 1, priority: policy.priority, status: "Assigned", slaPolicyId: policy.id, slaDueAt: new Date(now.getTime() + policy.targetMinutes * 60_000),
     }).returning();
     if (!record) throw new ApiError(500, "ESCALATION_CREATE_FAILED", "The escalation could not be created.");
