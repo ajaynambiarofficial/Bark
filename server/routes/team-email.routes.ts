@@ -47,7 +47,7 @@ router.get("/recipients", async (request, response) => {
     .from(users).innerJoin(roles, eq(users.roleId, roles.id))
     .where(and(eq(users.accountStatus, "active"), eq(roles.active, true)))
     .orderBy(asc(users.displayName))).filter((recipient) => hasDeliverableEmail(recipient.email));
-  response.json({ data: { recipients, emailConfigured: env.emailConfigured, maxRecipients: 200 } });
+  response.json({ data: { recipients, emailConfigured: env.emailConfigured, replyToEmail: hasDeliverableEmail(actor.email) ? actor.email : env.EMAIL_FROM ?? null, maxRecipients: 200 } });
 });
 
 router.get("/", async (request, response) => {
@@ -106,7 +106,7 @@ router.post("/:id/send", async (request, response) => {
 
   let messageId: string;
   try {
-    ({ messageId } = await sendTeamEmail({ senderName: actor.displayName, senderRole: actor.roleName, senderEmail: actor.email, subject, body: draft.body, recipients }));
+    ({ messageId } = await sendTeamEmail({ senderName: actor.displayName, senderRole: actor.roleName, senderEmail: hasDeliverableEmail(actor.email) ? actor.email : env.EMAIL_FROM!, subject, body: draft.body, recipients }));
   } catch (error) {
     await db.transaction(async (transaction) => {
       await transaction.update(teamEmails).set({ status: "failed", updatedAt: new Date() }).where(eq(teamEmails.id, id));

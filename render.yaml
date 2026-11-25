@@ -19,6 +19,18 @@ services:
         value: 29732196650-gu3aphpdp733irmkmsi3jr4j06fg592b.apps.googleusercontent.com
       - key: VITE_GOOGLE_CLIENT_ID
         value: 29732196650-gu3aphpdp733irmkmsi3jr4j06fg592b.apps.googleusercontent.com
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "465"
+      - key: SMTP_SECURE
+        value: "true"
+      - key: SMTP_USER
+        value: barkissuetracker@gmail.com
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: EMAIL_FROM
+        value: barkissuetracker@gmail.com
       - key: GOD_EMAIL
         sync: false
       - key: GOD_PASSWORD
