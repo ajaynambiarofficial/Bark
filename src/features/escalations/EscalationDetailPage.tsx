@@ -1,5 +1,6 @@
-import { ArrowLeft, ArrowRightLeft, Bell, CheckCircle2, Clock3, FileText, MessageSquare, RotateCcw, ShieldAlert, TrendingUp, UserRound } from "lucide-react";
+import { ArrowLeft, ArrowRightLeft, Bell, CheckCircle2, Clock3, FileText, MessageSquare, Printer, RotateCcw, ShieldAlert, TrendingUp, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { Link, useParams } from "react-router";
 import { useAuth } from "../../auth/AuthContext";
 import { Avatar } from "../../components/ui/Avatar";
@@ -16,6 +17,13 @@ type DialogState = "comment" | "transfer" | "tier" | "resolve" | "reopen" | null
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+}
+
+function printEscalation(item: Escalation) {
+  const originalTitle = document.title;
+  document.title = `${item.reference ?? "Escalation"} - Bark by Supertails`;
+  window.print();
+  window.setTimeout(() => { document.title = originalTitle; }, 1000);
 }
 
 const activityLabels: Record<EscalationActivity["type"], string> = {
@@ -78,6 +86,7 @@ export function EscalationDetailPage() {
       <header className="flex flex-col gap-5 rounded-[var(--radius-lg)] border border-default bg-surface p-5 shadow-[var(--shadow-card)] sm:p-6 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0"><p className="text-xs font-semibold tracking-wide text-brand uppercase">{item.reference ?? item.id}</p><h1 className="mt-2 text-2xl font-semibold tracking-tight text-primary sm:text-3xl">{item.title}</h1><div className="mt-4 flex flex-wrap gap-2"><StatusBadge status={item.status} /><PriorityBadge priority={item.priority} /><TierBadge tier={item.tier} /><span className="inline-flex items-center rounded-full border border-default px-2.5 py-1"><SlaIndicator item={item} /></span></div></div>
         <div className="flex max-w-xl flex-wrap gap-2">
+          <Button variant="secondary" icon={<Printer size={16} />} onClick={() => printEscalation(item)} className="print:hidden">Download PDF</Button>
           {canComment(employee, item) && <Button variant="secondary" icon={<MessageSquare size={16} />} onClick={() => setDialog("comment")}>Add Comment</Button>}
           {canTransfer(employee, item) && <Button variant="secondary" icon={<ArrowRightLeft size={16} />} onClick={() => setDialog("transfer")}>Transfer Ownership</Button>}
           {item.tier < 3 && canIncreaseTier(employee, item, (item.tier + 1) as 2 | 3) && <Button variant="secondary" icon={<TrendingUp size={16} />} onClick={() => setDialog("tier")}>Escalate Tier</Button>}
@@ -105,11 +114,55 @@ export function EscalationDetailPage() {
         </div>
       </div>
 
+      <section className="escalation-print hidden print:block" aria-label="Printable escalation summary">
+        <div className="print-brand"><div><p className="print-kicker">BARK / SUPERTAILS</p><p className="print-subtitle">Escalation summary</p></div><p className="print-reference">{item.reference ?? item.id}</p></div>
+        <div className="print-title-block"><p className="print-kicker">{categoryDefinitions[item.category].name}</p><h1>{item.title}</h1><div className="print-status-row"><span>{item.status}</span><span>{item.priority} priority</span><span>Tier {item.tier}</span></div></div>
+        <dl className="print-grid">
+          <PrintInfo term="Reporter" value={`${item.reporter.displayName} · ${item.reporter.roleLabel}`} />
+          <PrintInfo term="Accountable owner" value={`${item.accountableOwner.displayName} · ${item.accountableOwner.roleLabel}`} />
+          <PrintInfo term="Originating department" value={item.originatingDepartment} />
+          <PrintInfo term="Responsible department" value={item.responsibleDepartment} />
+          <PrintInfo term="Assigned clinic" value={item.clinic ?? "Not applicable"} />
+          <PrintInfo term="Created" value={formatDate(item.createdAt)} />
+          <PrintInfo term="Last updated" value={formatDate(item.updatedAt)} />
+          <PrintInfo term="Customer phone" value={maskCustomerPhone(item.customerPhone) ?? "Not applicable"} />
+        </dl>
+        <PrintSection title="Description"><p>{item.description || "No additional description was supplied."}</p></PrintSection>
+        <PrintSection title="Comments">{item.comments.length ? <div className="print-list">{item.comments.map((entry) => <div key={entry.id}><p className="print-item-title">{entry.author.displayName} <span>· {entry.visibility === "internal" ? "Internal" : "Shared with involved teams"}</span></p><p>{entry.body}</p><p className="print-meta">{formatDate(entry.createdAt)}</p></div>)}</div> : <p>No comments yet.</p>}</PrintSection>
+        <PrintSection title="Activity history">{item.activity.length ? <div className="print-list">{item.activity.map((event) => <div key={event.id}><p className="print-item-title">{activityLabels[event.type]}</p><p className="print-meta">{event.actorName} · {formatDate(event.timestamp)}</p>{event.reason && <p>{event.reason}</p>}{(event.previousValue || event.newValue) && <p>{event.previousValue && `${event.previousValue} → `}{event.newValue}</p>}</div>)}</div> : <p>No activity recorded.</p>}</PrintSection>
+        <p className="print-footer">Generated from Bark by Supertails · {formatDate(new Date().toISOString())}</p>
+      </section>
+
       <Modal open={dialog === "comment"} title="Add comment" description="Comments become part of the mock activity history." onClose={() => setDialog(null)} footer={<><Button variant="secondary" onClick={() => setDialog(null)}>Cancel</Button><Button onClick={() => void submitDialog()} disabled={pending || !comment.trim()}>{pending ? "Posting…" : "Post Comment"}</Button></>}><label><span className={labelClass}>Visibility</span><select className={fieldClass} value={visibility} onChange={(event) => setVisibility(event.target.value as CommentVisibility)}><option value="internal">Internal</option><option value="shared">Shared with involved operational teams</option></select></label><label className="mt-4 block"><span className={labelClass}>Comment</span><textarea className={`${fieldClass} min-h-28 py-3`} value={comment} onChange={(event) => setComment(event.target.value)} /></label></Modal>
       <Modal open={dialog === "transfer"} title="Transfer ownership" description="The previous owner remains in the history and as a collaborator." onClose={() => setDialog(null)} footer={<><Button variant="secondary" onClick={() => setDialog(null)}>Cancel</Button><Button onClick={() => void submitDialog()} disabled={pending || !ownerId || !reason.trim()}>{pending ? "Transferring…" : "Confirm Transfer"}</Button></>}><label><span className={labelClass}>New accountable owner</span><select className={fieldClass} value={ownerId} onChange={(event) => setOwnerId(event.target.value)}><option value="">Select eligible owner</option>{owners.filter((owner) => owner.id !== item.accountableOwner.id).map((owner) => <option key={owner.id} value={owner.id}>{owner.displayName} — {owner.roleLabel}</option>)}</select></label><ReasonField value={reason} onChange={setReason} label="Transfer reason" /></Modal>
       <Modal open={dialog === "tier"} title={`Escalate to Tier ${item.tier + 1}`} description="Increasing the tier adds oversight without removing the current owner." onClose={() => setDialog(null)} footer={<><Button variant="secondary" onClick={() => setDialog(null)}>Cancel</Button><Button onClick={() => void submitDialog()} disabled={pending || !reason.trim()}>{pending ? "Escalating…" : "Confirm Tier Increase"}</Button></>}><ReasonField value={reason} onChange={setReason} label="Escalation reason" /></Modal>
       <Modal open={dialog === "resolve"} title="Resolve escalation" description="A resolution note is required and will be added to the audit history." onClose={() => setDialog(null)} footer={<><Button variant="secondary" onClick={() => setDialog(null)}>Cancel</Button><Button onClick={() => void submitDialog()} disabled={pending || !reason.trim()}>{pending ? "Resolving…" : "Resolve"}</Button></>}><ReasonField value={reason} onChange={setReason} label="Resolution note" /></Modal>
       <Modal open={dialog === "reopen"} title="Reopen escalation" description="Explain why additional work is required." onClose={() => setDialog(null)} footer={<><Button variant="secondary" onClick={() => setDialog(null)}>Cancel</Button><Button onClick={() => void submitDialog()} disabled={pending || !reason.trim()}>{pending ? "Reopening…" : "Reopen"}</Button></>}><ReasonField value={reason} onChange={setReason} label="Reopening reason" /></Modal>
+      <style>{`@media print {
+        @page { margin: 0.6in; }
+        body * { visibility: hidden !important; }
+        .escalation-print, .escalation-print * { visibility: visible !important; }
+        .escalation-print { position: absolute !important; inset: 0 auto auto 0 !important; width: 100% !important; color: #1c2821 !important; font-family: Arial, sans-serif; }
+        .print-brand { display: flex; align-items: flex-start; justify-content: space-between; border-bottom: 4px solid #b8f27a; padding: 0 0 14px; }
+        .print-kicker { color: #17613f; font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+        .print-subtitle, .print-reference, .print-meta { color: #68756d; font-size: 11px; }
+        .print-title-block { border-bottom: 1px solid #d8dfd9; padding: 26px 0 20px; }
+        .print-title-block h1 { margin: 7px 0 14px; font-size: 26px; line-height: 1.15; }
+        .print-status-row { display: flex; gap: 8px; color: #17613f; font-size: 11px; font-weight: 700; text-transform: capitalize; }
+        .print-status-row span { border: 1px solid #b8d2c0; border-radius: 999px; padding: 5px 9px; }
+        .print-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; border-bottom: 1px solid #d8dfd9; padding: 18px 0; }
+        .print-grid dt { color: #68756d; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+        .print-grid dd { margin: 4px 0 0; font-size: 12px; font-weight: 600; }
+        .print-section { border-bottom: 1px solid #d8dfd9; padding: 18px 0; }
+        .print-section h2 { margin: 0 0 9px; color: #17613f; font-size: 13px; }
+        .print-section p { margin: 0; font-size: 12px; line-height: 1.55; white-space: pre-wrap; }
+        .print-list { display: grid; gap: 12px; }
+        .print-list > div { border-left: 3px solid #b8f27a; padding-left: 10px; }
+        .print-item-title { font-weight: 700; }
+        .print-item-title span { color: #68756d; font-weight: 400; }
+        .print-meta { margin-top: 4px !important; }
+        .print-footer { margin-top: 22px !important; color: #68756d; font-size: 10px !important; }
+      }`}</style>
     </div>
   );
 }
@@ -120,4 +173,12 @@ function Info({ term, value, detail }: { term: string; value: string; detail?: s
 
 function ReasonField({ value, onChange, label }: { value: string; onChange(value: string): void; label: string }) {
   return <label className="block"><span className={labelClass}>{label} <span className="text-error">*</span></span><textarea className={`${fieldClass} min-h-28 py-3`} value={value} onChange={(event) => onChange(event.target.value)} placeholder="Provide a clear operational reason" /></label>;
+}
+
+function PrintInfo({ term, value }: { term: string; value: string }) {
+  return <div><dt>{term}</dt><dd>{value}</dd></div>;
+}
+
+function PrintSection({ title, children }: { title: string; children: ReactNode }) {
+  return <section className="print-section"><h2>{title}</h2>{children}</section>;
 }
