@@ -130,7 +130,9 @@ export async function sendWithGmailApi(input: {
   const headers = [
     `From: ${encodeHeader(`${input.senderName} via Bark`)} <${mailbox.connectedEmail}>`,
     `Reply-To: ${encodeHeader(input.senderName)} <${input.senderEmail}>`,
-    `To: undisclosed-recipients:;`,
+    // Gmail's API rejects an empty undisclosed-recipients group as an invalid To header.
+    // Address the shared mailbox visibly while keeping every employee recipient in Bcc.
+    `To: ${mailbox.connectedEmail}`,
     `Bcc: ${input.recipients.map((recipient) => recipient.email).join(", ")}`,
     `Subject: ${encodeHeader(input.subject)}`,
     "MIME-Version: 1.0",
