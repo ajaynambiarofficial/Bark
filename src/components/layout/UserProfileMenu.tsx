@@ -1,4 +1,4 @@
-import { Check, ChevronDown, ChevronLeft, LogOut, Monitor, Moon, Settings, Sun, UserRound } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, HelpCircle, LogOut, Monitor, Moon, Settings, Sun, UserRound } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../../auth/AuthContext";
@@ -69,6 +69,7 @@ export function UserProfileMenu() {
         aria-label={`Open profile menu for ${employee.displayName}`}
         aria-haspopup="menu"
         aria-expanded={open}
+        data-tour="profile-menu"
         className="flex min-h-11 items-center gap-2 rounded-[var(--radius-control)] px-1.5 py-1 text-left transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:pr-2.5"
       >
         <Avatar name={employee.displayName} size="sm" src="/api/auth/profile/avatar" />
@@ -130,6 +131,9 @@ export function UserProfileMenu() {
             </>
           ) : (
             <div className="p-2">
+              <button type="button" onClick={() => { setOpen(false); window.dispatchEvent(new Event("bark:start-product-tour")); }} className="flex min-h-11 w-full items-center gap-3 rounded-[var(--radius-sm)] px-3 text-sm font-medium text-secondary transition-colors hover:bg-hover hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+                <HelpCircle size={17} aria-hidden="true" /><span className="flex-1 text-left">Take a product tour</span>
+              </button>
               <button type="button" onClick={() => { setOpen(false); navigate("/profile"); }} className="flex min-h-11 w-full items-center gap-3 rounded-[var(--radius-sm)] px-3 text-sm font-medium text-secondary transition-colors hover:bg-hover hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
                 <UserRound size={17} aria-hidden="true" /><span className="flex-1 text-left">Edit profile</span>
               </button>

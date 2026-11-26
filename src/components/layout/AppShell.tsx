@@ -3,6 +3,7 @@ import { Outlet } from "react-router";
 import { useAuth } from "../../auth/AuthContext";
 import { Sidebar } from "./Sidebar";
 import { TopHeader } from "./TopHeader";
+import { ProductTour } from "../onboarding/ProductTour";
 
 const SIDEBAR_KEY = "bark.sidebar.collapsed";
 
@@ -43,6 +44,7 @@ export function AppShell() {
           <Outlet />
         </main>
       </div>
+      <ProductTour onOpenMobileNav={() => setMobileOpen(true)} onCloseMobileNav={closeMobileNavigation} />
     </div>
   );
 }

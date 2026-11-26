@@ -104,9 +104,9 @@ export function Sidebar({
       </div>
 
       <nav className="flex-1 space-y-1.5 px-3 py-5" aria-label="Primary navigation">
-        {teamModules.length > 0 && <>{!collapsed && <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">Team</p>}{teamModules.map((item) => <SidebarItem key={item.key} to={item.to} label={item.label} icon={item.icon} collapsed={collapsed} onNavigate={onCloseMobile} />)}</>}
-        {(employee.role === "god" || employee.role === "system-administrator") && <SidebarItem to="/admin" label="Admin Control" icon={Settings2} collapsed={collapsed} onNavigate={onCloseMobile} />}
-        {pawcareModules.length > 0 && <><div className="my-3 border-t border-default" aria-hidden="true" />{!collapsed && <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">Pawcare</p>}{pawcareModules.map((item) => <SidebarItem key={item.key} to={item.to} label={item.label} icon={item.icon} collapsed={collapsed} onNavigate={onCloseMobile} />)}</>}
+        {teamModules.length > 0 && <>{!collapsed && <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">Team</p>}{teamModules.map((item) => <SidebarItem key={item.key} to={item.to} label={item.label} icon={item.icon} collapsed={collapsed} onNavigate={onCloseMobile} tourId={item.key} />)}</>}
+        {(employee.role === "god" || employee.role === "system-administrator") && <SidebarItem to="/admin" label="Admin Control" icon={Settings2} collapsed={collapsed} onNavigate={onCloseMobile} tourId="admin-control" />}
+        {pawcareModules.length > 0 && <><div className="my-3 border-t border-default" aria-hidden="true" />{!collapsed && <p data-tour="pawcare-heading" className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">Pawcare</p>}{pawcareModules.map((item) => <SidebarItem key={item.key} to={item.to} label={item.label} icon={item.icon} collapsed={collapsed} onNavigate={onCloseMobile} tourId={item.key} />)}</>}
       </nav>
 
       <div className="border-t border-default p-3">

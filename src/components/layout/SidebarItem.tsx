@@ -7,12 +7,14 @@ interface SidebarItemProps {
   icon: LucideIcon;
   collapsed: boolean;
   onNavigate?: () => void;
+  tourId?: string;
 }
 
-export function SidebarItem({ to, label, icon: Icon, collapsed, onNavigate }: SidebarItemProps) {
+export function SidebarItem({ to, label, icon: Icon, collapsed, onNavigate, tourId }: SidebarItemProps) {
   return (
     <NavLink
       to={to}
+      data-tour={tourId}
       onClick={onNavigate}
       aria-label={collapsed ? label : undefined}
       title={collapsed ? label : undefined}
