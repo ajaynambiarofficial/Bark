@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Download, ExternalLink, RefreshCw, Search } from "lucide-react";
+import { Download, ExternalLink, RefreshCw, Search, Trash2 } from "lucide-react";
 import { Link } from "react-router";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
@@ -101,6 +101,7 @@ export function AdminEscalationsDashboard() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [sortBy, setSortBy] = useState<SortBy>("created-desc");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -121,6 +122,23 @@ export function AdminEscalationsDashboard() {
     finally { setLoading(false); }
   }, []);
   useEffect(() => { void load(); }, [load]);
+
+  const deleteEscalation = async (item: AdminEscalation) => {
+    const confirmed = window.confirm(`Delete ${item.reference} — ${item.title}? It will be removed from the active escalation dashboard.`);
+    if (!confirmed) return;
+    setError("");
+    setDeletingId(item.id);
+    try {
+      const response = await fetch(`${apiBase}/admin/escalation-dashboard/${item.id}`, { method: "DELETE", credentials: "include" });
+      const body = await response.json().catch(() => null) as { error?: { message?: string } } | null;
+      if (!response.ok) throw new Error(body?.error?.message ?? "Could not delete this escalation.");
+      setRows((current) => current.filter(({ escalation }) => escalation.id !== item.id));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not delete this escalation.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -176,7 +194,7 @@ export function AdminEscalationsDashboard() {
     </Card>
     <Card className="overflow-hidden">
       {loading ? <p className="p-8 text-center text-sm text-secondary">Loading all records…</p> : sorted.length === 0 ? <p className="p-8 text-center text-sm text-secondary">No records match these filters.</p> : <div className="overflow-x-auto"><table className="w-full min-w-[1050px] text-left text-sm">
-        <thead className="bg-subtle text-xs uppercase text-muted"><tr>{["Record", "Type / area", "Status", "Priority", "Reporter", "Owner", "Created", "SLA", ""].map((label, index) => <th key={`${label}-${index}`} className="px-4 py-3 font-semibold">{label}</th>)}</tr></thead>
+        <thead className="bg-subtle text-xs uppercase text-muted"><tr>{["Record", "Type / area", "Status", "Priority", "Reporter", "Owner", "Created", "SLA", "Actions"].map((label, index) => <th key={`${label}-${index}`} className="px-4 py-3 font-semibold">{label}</th>)}</tr></thead>
         <tbody>{sorted.map(({ escalation: item, reporter, owner, clinic }) => {
           const kind = recordType(item);
           const late = isOverdue(item);
@@ -189,7 +207,7 @@ export function AdminEscalationsDashboard() {
             <td className="px-4 py-3">{owner.displayName}<p className="mt-1 text-xs text-muted">{item.assignedTeam}</p></td>
             <td className="px-4 py-3 whitespace-nowrap">{formatDate(item.createdAt)}</td>
             <td className={`px-4 py-3 whitespace-nowrap ${late ? "font-semibold text-error" : "text-secondary"}`}>{late ? "Overdue · " : ""}{formatDate(item.slaDueAt)}</td>
-            <td className="px-4 py-3"><Link to={`/escalations/${item.id}`} aria-label={`Open ${item.reference}`} className="inline-flex size-9 items-center justify-center rounded-lg text-secondary hover:bg-hover hover:text-primary"><ExternalLink size={16} /></Link></td>
+            <td className="px-4 py-3"><div className="flex items-center gap-1"><Link to={`/escalations/${item.id}`} aria-label={`Open ${item.reference}`} title="Open record" className="inline-flex size-9 items-center justify-center rounded-lg text-secondary hover:bg-hover hover:text-primary"><ExternalLink size={16} /></Link><button type="button" onClick={() => void deleteEscalation(item)} disabled={deletingId === item.id} aria-label={`Delete ${item.reference}`} title="Delete record" className="inline-flex size-9 items-center justify-center rounded-lg text-error hover:bg-error-soft disabled:cursor-wait disabled:opacity-50"><Trash2 size={16} /></button></div></td>
           </tr>;
         })}</tbody>
       </table></div>}

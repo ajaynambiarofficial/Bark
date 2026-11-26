@@ -2,7 +2,7 @@ import { Router } from "express";
 import { aliasedTable, and, asc, desc, eq, gt, ilike, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/client.js";
-import { applicationSettings, assignmentRules, auditEvents, clinicServices, clinics, escalations, featureFlags, offers, permissions, rolePermissions, roles, services, sessions, slaPolicies, userClinics, userPermissions, users } from "../db/schema.js";
+import { applicationSettings, assignmentRules, auditEvents, clinicServices, clinics, escalationActivity, escalations, featureFlags, offers, permissions, rolePermissions, roles, services, sessions, slaPolicies, userClinics, userPermissions, users } from "../db/schema.js";
 import { hashPassword } from "../auth/password.js";
 import { requireClearance, requirePermission } from "../middleware/auth.js";
 import { ApiError } from "../lib/errors.js";
@@ -51,6 +51,24 @@ router.get("/escalation-dashboard", requirePermission("admin:users"), async (req
     .leftJoin(clinics, eq(escalations.clinicId, clinics.id))
     .where(isNull(escalations.deletedAt)).orderBy(desc(escalations.updatedAt)).limit(input.limit).offset(input.offset);
   response.json({ data: records, meta: { limit: input.limit, offset: input.offset, returned: records.length } });
+});
+
+router.delete("/escalation-dashboard/:id", requirePermission("admin:users"), async (request, response) => {
+  const id = uuid.parse(request.params.id);
+  const actor = request.auth!;
+  const deletedAt = new Date();
+  const [deleted] = await db.transaction(async (transaction) => {
+    const records = await transaction.update(escalations)
+      .set({ deletedAt, updatedAt: deletedAt })
+      .where(and(eq(escalations.id, id), isNull(escalations.deletedAt)))
+      .returning({ id: escalations.id, reference: escalations.reference, title: escalations.title });
+    const record = records[0];
+    if (!record) throw new ApiError(404, "ESCALATION_NOT_FOUND", "The escalation was not found or has already been deleted.");
+    await transaction.insert(escalationActivity).values({ escalationId: id, actorId: actor.userId, action: "deleted", reason: "Deleted by an administrator" });
+    await appendAudit(transaction, { actor, action: "escalation.deleted", entityType: "escalation", entityId: id, previousValue: { reference: record.reference, title: record.title }, newValue: { deletedAt: deletedAt.toISOString() }, reason: "Deleted from the admin escalation dashboard", requestId: request.requestId, ipAddress: request.ip });
+    return records;
+  });
+  response.json({ data: deleted });
 });
 
 router.get("/configuration/catalog", requirePermission("admin:settings"), async (_request, response) => {
