@@ -18,6 +18,7 @@ import { catalogRouter } from "./routes/catalog.routes.js";
 import { customerRouter } from "./routes/customer.routes.js";
 import { noticeRouter } from "./routes/notice.routes.js";
 import { teamEmailRouter } from "./routes/team-email.routes.js";
+import { moduleRouter } from "./routes/module.routes.js";
 import { resolve } from "node:path";
 
 export function createApp() {
@@ -62,6 +63,7 @@ export function createApp() {
   app.get("/api/health", (_request, response) => response.json({ status: "ok", version: process.env.npm_package_version ?? "0.1.0" }));
   app.use("/api/auth", authRouter);
   app.use("/api", requireAuth);
+  app.use("/api/modules", moduleRouter);
   app.use("/api/bookings", bookingRouter);
   app.use("/api/escalations", escalationRouter);
   app.use("/api/calendar", calendarRouter);

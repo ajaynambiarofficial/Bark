@@ -5,6 +5,7 @@ import { SidebarItem } from "./SidebarItem";
 import type { Employee } from "../../types/auth";
 import { Avatar } from "../ui/Avatar";
 import { canSendTeamEmail } from "../../auth/teamEmailAccess";
+import { useModuleVisibility } from "../../modules/ModuleVisibilityContext";
 
 interface SidebarProps {
   employee: Employee;
@@ -69,6 +70,24 @@ export function Sidebar({
   }, [isDesktop, mobileOpen, onCloseMobile]);
 
   const hiddenOnMobile = !isDesktop && !mobileOpen;
+  const { isEnabled } = useModuleVisibility();
+  const teamModules = [
+    { key: "team.home" as const, to: "/welcome", label: "Home", icon: House },
+    { key: "team.bookings" as const, to: "/bookings", label: "Bookings", icon: CalendarDays },
+    { key: "team.calendar" as const, to: "/calendar", label: "Calendar", icon: CalendarDays },
+    { key: "team.escalations" as const, to: "/escalations", label: "Escalations", icon: AlertCircle },
+    { key: "team.guide" as const, to: "/guide", label: "Guide", icon: BookOpen },
+    { key: "team.notice-board" as const, to: "/notice-board", label: "Notice Board", icon: Megaphone },
+    ...(canSendTeamEmail(employee.role) ? [{ key: "team.team-email" as const, to: "/team-email", label: "Team Email", icon: Mail }] : []),
+  ].filter((item) => isEnabled(item.key));
+  const pawcareModules = [
+    { key: "pawcare.booking" as const, to: "/pawcare/booking", label: "Booking", icon: Stethoscope },
+    { key: "pawcare.appointments" as const, to: "/pawcare/appointments", label: "Appointments", icon: CalendarDays },
+    { key: "pawcare.quotes" as const, to: "/pawcare/quotes", label: "Quote generator", icon: FileText },
+    { key: "pawcare.chat" as const, to: "/pawcare/chat", label: "Clinic Chat", icon: MessageCircle },
+    { key: "pawcare.pharmacy" as const, to: "/pawcare/pharmacy", label: "Pharmacy", icon: Pill },
+    { key: "pawcare.diagnostics" as const, to: "/pawcare/diagnostics", label: "Diagnostics", icon: TestTube },
+  ].filter((item) => isEnabled(item.key));
   const nav = (
     <>
       <div className="flex h-[72px] items-center justify-between border-b border-default px-4">
@@ -85,23 +104,9 @@ export function Sidebar({
       </div>
 
       <nav className="flex-1 space-y-1.5 px-3 py-5" aria-label="Primary navigation">
-        {!collapsed && <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">Team</p>}
-        <SidebarItem to="/welcome" label="Home" icon={House} collapsed={collapsed} onNavigate={onCloseMobile} />
-        <SidebarItem to="/bookings" label="Bookings" icon={CalendarDays} collapsed={collapsed} onNavigate={onCloseMobile} />
-        <SidebarItem to="/calendar" label="Calendar" icon={CalendarDays} collapsed={collapsed} onNavigate={onCloseMobile} />
-        <SidebarItem to="/escalations" label="Escalations" icon={AlertCircle} collapsed={collapsed} onNavigate={onCloseMobile} />
-        <SidebarItem to="/guide" label="Guide" icon={BookOpen} collapsed={collapsed} onNavigate={onCloseMobile} />
-        <SidebarItem to="/notice-board" label="Notice Board" icon={Megaphone} collapsed={collapsed} onNavigate={onCloseMobile} />
-        {canSendTeamEmail(employee.role) && <SidebarItem to="/team-email" label="Team Email" icon={Mail} collapsed={collapsed} onNavigate={onCloseMobile} />}
+        {teamModules.length > 0 && <>{!collapsed && <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">Team</p>}{teamModules.map((item) => <SidebarItem key={item.key} to={item.to} label={item.label} icon={item.icon} collapsed={collapsed} onNavigate={onCloseMobile} />)}</>}
         {(employee.role === "god" || employee.role === "system-administrator") && <SidebarItem to="/admin" label="Admin Control" icon={Settings2} collapsed={collapsed} onNavigate={onCloseMobile} />}
-        <div className="my-3 border-t border-default" aria-hidden="true" />
-        {!collapsed && <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">Pawcare</p>}
-        <SidebarItem to="/pawcare/booking" label="Booking" icon={Stethoscope} collapsed={collapsed} onNavigate={onCloseMobile} />
-        <SidebarItem to="/pawcare/appointments" label="Appointments" icon={CalendarDays} collapsed={collapsed} onNavigate={onCloseMobile} />
-        <SidebarItem to="/pawcare/quotes" label="Quote generator" icon={FileText} collapsed={collapsed} onNavigate={onCloseMobile} />
-        <SidebarItem to="/pawcare/chat" label="Clinic Chat" icon={MessageCircle} collapsed={collapsed} onNavigate={onCloseMobile} />
-        <SidebarItem to="/pawcare/pharmacy" label="Pharmacy" icon={Pill} collapsed={collapsed} onNavigate={onCloseMobile} />
-        <SidebarItem to="/pawcare/diagnostics" label="Diagnostics" icon={TestTube} collapsed={collapsed} onNavigate={onCloseMobile} />
+        {pawcareModules.length > 0 && <><div className="my-3 border-t border-default" aria-hidden="true" />{!collapsed && <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">Pawcare</p>}{pawcareModules.map((item) => <SidebarItem key={item.key} to={item.to} label={item.label} icon={item.icon} collapsed={collapsed} onNavigate={onCloseMobile} />)}</>}
       </nav>
 
       <div className="border-t border-default p-3">

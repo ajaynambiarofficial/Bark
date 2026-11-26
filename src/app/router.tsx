@@ -24,6 +24,7 @@ import { FeatureRequestPage } from "../features/escalations/FeatureRequestPage";
 import { ReportBugPage } from "../features/escalations/ReportBugPage";
 import { NoticeBoardPage } from "../pages/NoticeBoardPage";
 import { TeamEmailPage } from "../pages/TeamEmailPage";
+import { ModuleRoute, ModulesDisabledPage } from "../modules/ModuleRoute";
 
 function ProtectedRoute() {
   const { employee, isRestoring } = useAuth();
@@ -48,25 +49,26 @@ export const router = createBrowserRouter([
       {
         element: <AppShell />,
         children: [
-          { path: "/welcome", element: <WelcomePage /> },
-          { path: "/bookings", element: <BookingsPage /> },
-          { path: "/calendar", element: <CalendarPage /> },
-          { path: "/escalations", element: <EscalationsPage /> },
-          { path: "/guide", element: <GuidePage /> },
-          { path: "/notice-board", element: <NoticeBoardPage /> },
-          { path: "/team-email", element: <TeamEmailPage /> },
-          { path: "/pawcare/booking", element: <PawcareBookingPage /> },
-          { path: "/pawcare/appointments", element: <PawcareAppointmentsPage /> },
-          { path: "/pawcare/quotes", element: <QuoteGeneratorPage /> },
-          { path: "/pawcare/chat", element: <ClinicChatPage /> },
-          { path: "/pawcare/pharmacy", element: <PawcarePlaceholderPage title="Pharmacy" icon={Pill} /> },
-          { path: "/pawcare/diagnostics", element: <DiagnosticsPage /> },
+          { path: "/welcome", element: <ModuleRoute moduleKey="team.home"><WelcomePage /></ModuleRoute> },
+          { path: "/bookings", element: <ModuleRoute moduleKey="team.bookings"><BookingsPage /></ModuleRoute> },
+          { path: "/calendar", element: <ModuleRoute moduleKey="team.calendar"><CalendarPage /></ModuleRoute> },
+          { path: "/escalations", element: <ModuleRoute moduleKey="team.escalations"><EscalationsPage /></ModuleRoute> },
+          { path: "/guide", element: <ModuleRoute moduleKey="team.guide"><GuidePage /></ModuleRoute> },
+          { path: "/notice-board", element: <ModuleRoute moduleKey="team.notice-board"><NoticeBoardPage /></ModuleRoute> },
+          { path: "/team-email", element: <ModuleRoute moduleKey="team.team-email"><TeamEmailPage /></ModuleRoute> },
+          { path: "/pawcare/booking", element: <ModuleRoute moduleKey="pawcare.booking"><PawcareBookingPage /></ModuleRoute> },
+          { path: "/pawcare/appointments", element: <ModuleRoute moduleKey="pawcare.appointments"><PawcareAppointmentsPage /></ModuleRoute> },
+          { path: "/pawcare/quotes", element: <ModuleRoute moduleKey="pawcare.quotes"><QuoteGeneratorPage /></ModuleRoute> },
+          { path: "/pawcare/chat", element: <ModuleRoute moduleKey="pawcare.chat"><ClinicChatPage /></ModuleRoute> },
+          { path: "/pawcare/pharmacy", element: <ModuleRoute moduleKey="pawcare.pharmacy"><PawcarePlaceholderPage title="Pharmacy" icon={Pill} /></ModuleRoute> },
+          { path: "/pawcare/diagnostics", element: <ModuleRoute moduleKey="pawcare.diagnostics"><DiagnosticsPage /></ModuleRoute> },
+          { path: "/modules-disabled", element: <ModulesDisabledPage /> },
           { path: "/admin", element: <AdminControlPage /> },
           { path: "/profile", element: <ProfilePage /> },
-          { path: "/escalations/new", element: <CreateEscalationPage /> },
-          { path: "/escalations/feature-request", element: <FeatureRequestPage /> },
-          { path: "/escalations/report-bug", element: <ReportBugPage /> },
-          { path: "/escalations/:escalationId", element: <EscalationDetailPage /> },
+          { path: "/escalations/new", element: <ModuleRoute moduleKey="team.escalations"><CreateEscalationPage /></ModuleRoute> },
+          { path: "/escalations/feature-request", element: <ModuleRoute moduleKey="team.escalations"><FeatureRequestPage /></ModuleRoute> },
+          { path: "/escalations/report-bug", element: <ModuleRoute moduleKey="team.escalations"><ReportBugPage /></ModuleRoute> },
+          { path: "/escalations/:escalationId", element: <ModuleRoute moduleKey="team.escalations"><EscalationDetailPage /></ModuleRoute> },
         ],
       },
     ],
