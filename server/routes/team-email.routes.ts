@@ -1,11 +1,12 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { Router } from "express";
+import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { db } from "../db/client.js";
 import { ApiError } from "../lib/errors.js";
 import { parseBody } from "../lib/validation.js";
 import { appendAudit } from "../services/audit.service.js";
-import { sendTeamEmail } from "../services/team-email.service.js";
+import { completeMailboxAuthorization, createAuthorizationUrl, disconnectMailbox, mailboxStatus, sendWithGmailApi, storeOAuthState } from "../services/gmail-api.service.js";
 import { env } from "../config/env.js";
 import { roles, teamEmails, users } from "../db/schema.js";
 
@@ -20,6 +21,10 @@ const sendSubjectSchema = z.string().trim().min(3).max(200).regex(/^[^\r\n]+$/);
 
 function requireSender(clearanceLevel: number) {
   if (clearanceLevel <= 10) throw new ApiError(403, "TEAM_EMAIL_DENIED", "Team email is available to team leads, managers, and administrators.");
+}
+
+function requireMailboxAdmin(clearanceLevel: number) {
+  if (clearanceLevel < 90) throw new ApiError(403, "TEAM_EMAIL_SETTINGS_DENIED", "Only administrators can connect the shared Gmail account.");
 }
 
 function hasDeliverableEmail(email: string) {
@@ -47,7 +52,48 @@ router.get("/recipients", async (request, response) => {
     .from(users).innerJoin(roles, eq(users.roleId, roles.id))
     .where(and(eq(users.accountStatus, "active"), eq(roles.active, true)))
     .orderBy(asc(users.displayName))).filter((recipient) => hasDeliverableEmail(recipient.email));
-  response.json({ data: { recipients, emailConfigured: env.emailConfigured, replyToEmail: hasDeliverableEmail(actor.email) ? actor.email : env.EMAIL_FROM ?? null, maxRecipients: 200 } });
+  const mailbox = await mailboxStatus();
+  response.json({ data: { recipients, emailConfigured: mailbox.configured, mailboxConnectedEmail: mailbox.connectedEmail, mailboxSetupAvailable: mailbox.setupAvailable, canManageMailbox: actor.clearanceLevel >= 90, replyToEmail: hasDeliverableEmail(actor.email) ? actor.email : mailbox.connectedEmail, maxRecipients: 200 } });
+});
+
+router.post("/mailbox/connect", async (request, response) => {
+  const actor = request.auth!;
+  requireMailboxAdmin(actor.clearanceLevel);
+  const status = await mailboxStatus();
+  if (!status.setupAvailable) throw new ApiError(503, "TEAM_EMAIL_OAUTH_NOT_CONFIGURED", "Add GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, MAIL_TOKEN_ENCRYPTION_KEY, and EMAIL_FROM to the server environment first.");
+  const state = randomBytes(32).toString("base64url");
+  await storeOAuthState(state);
+  response.json({ data: { authorizationUrl: createAuthorizationUrl(state) } });
+});
+
+router.get("/google/callback", async (request, response) => {
+  const actor = request.auth!;
+  requireMailboxAdmin(actor.clearanceLevel);
+  const code = typeof request.query.code === "string" ? request.query.code : "";
+  const state = typeof request.query.state === "string" ? request.query.state : "";
+  const oauthError = typeof request.query.error === "string" ? request.query.error : "";
+  let result = "error";
+  if (code && state && !oauthError) {
+    try {
+      await completeMailboxAuthorization(code, state, actor.userId);
+      await appendAudit(db, { actor, action: "team_email.mailbox_connected", entityType: "team_email_mailbox", entityId: "shared", newValue: { connected: true }, requestId: request.requestId, ipAddress: request.ip });
+      result = "connected";
+    } catch {
+      result = "error";
+    }
+  }
+  const redirect = new URL("/team-email", env.APP_ORIGIN);
+  redirect.searchParams.set("mailbox", result);
+  response.redirect(303, redirect.toString());
+});
+
+router.post("/mailbox/disconnect", async (request, response) => {
+  const actor = request.auth!;
+  requireMailboxAdmin(actor.clearanceLevel);
+  const previous = await mailboxStatus();
+  await disconnectMailbox();
+  await appendAudit(db, { actor, action: "team_email.mailbox_disconnected", entityType: "team_email_mailbox", entityId: "shared", previousValue: { connected: Boolean(previous.connectedEmail) }, newValue: { connected: false }, requestId: request.requestId, ipAddress: request.ip });
+  response.json({ data: { disconnected: true } });
 });
 
 router.get("/", async (request, response) => {
@@ -91,7 +137,7 @@ router.put("/:id", async (request, response) => {
 router.post("/:id/send", async (request, response) => {
   const actor = request.auth!;
   requireSender(actor.clearanceLevel);
-  if (!env.emailConfigured) throw new ApiError(503, "TEAM_EMAIL_NOT_CONFIGURED", "Email delivery is not configured. Drafts can still be saved.");
+  if (!(await mailboxStatus()).configured) throw new ApiError(503, "TEAM_EMAIL_NOT_CONFIGURED", "Connect the shared Gmail account before sending. Drafts can still be saved.");
   const id = idSchema.parse(request.params.id);
   const [draft] = await db.select().from(teamEmails).where(and(eq(teamEmails.id, id), eq(teamEmails.createdBy, actor.userId))).limit(1);
   if (!draft) throw new ApiError(404, "TEAM_EMAIL_DRAFT_NOT_FOUND", "This draft was not found.");
@@ -106,7 +152,7 @@ router.post("/:id/send", async (request, response) => {
 
   let messageId: string;
   try {
-    ({ messageId } = await sendTeamEmail({ senderName: actor.displayName, senderRole: actor.roleName, senderEmail: hasDeliverableEmail(actor.email) ? actor.email : env.EMAIL_FROM!, subject, body: draft.body, recipients }));
+    ({ messageId } = await sendWithGmailApi({ senderName: actor.displayName, senderRole: actor.roleName, senderEmail: hasDeliverableEmail(actor.email) ? actor.email : (await mailboxStatus()).connectedEmail!, subject, body: draft.body, recipients }));
   } catch (error) {
     await db.transaction(async (transaction) => {
       await transaction.update(teamEmails).set({ status: "failed", updatedAt: new Date() }).where(eq(teamEmails.id, id));

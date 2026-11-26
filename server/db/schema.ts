@@ -292,6 +292,16 @@ export const teamEmails = pgTable("team_emails", {
   ...timestamps,
 }, (table) => [index("team_emails_author_updated_idx").on(table.createdBy, table.updatedAt)]);
 
+export const teamEmailMailbox = pgTable("team_email_mailbox", {
+  id: varchar("id", { length: 32 }).primaryKey().default("shared"),
+  connectedEmail: varchar("connected_email", { length: 254 }),
+  encryptedRefreshToken: text("encrypted_refresh_token"),
+  oauthStateHash: varchar("oauth_state_hash", { length: 64 }),
+  oauthStateExpiresAt: timestamp("oauth_state_expires_at", { withTimezone: true }),
+  updatedBy: uuid("updated_by").references(() => users.id),
+  ...timestamps,
+});
+
 export const assignmentRules = pgTable("assignment_rules", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: varchar("name", { length: 160 }).notNull(),

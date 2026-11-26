@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Navigate } from "react-router";
-import { Check, Clock3, Mail, Plus, Save, Search, Send, Users } from "lucide-react";
+import { Check, Clock3, Link2, Mail, Plus, Save, Search, Send, Unlink, Users } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { canSendTeamEmail } from "../auth/teamEmailAccess";
 import { Button } from "../components/ui/Button";
@@ -8,7 +8,7 @@ import { Card } from "../components/ui/Card";
 
 interface Recipient { id: string; displayName: string; email: string; department: string; roleKey: string; roleName: string }
 interface TeamEmail { id: string; subject: string; body: string; recipientUserIds: string[]; status: "draft" | "sending" | "sent" | "failed"; createdAt: string; updatedAt: string; sentAt: string | null }
-interface TeamEmailData { recipients: Recipient[]; emailConfigured: boolean; replyToEmail: string | null; maxRecipients: number }
+interface TeamEmailData { recipients: Recipient[]; emailConfigured: boolean; mailboxConnectedEmail: string | null; mailboxSetupAvailable: boolean; canManageMailbox: boolean; replyToEmail: string | null; maxRecipients: number }
 
 const apiBase = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ?? "/api";
 const fieldClass = "mt-1.5 min-h-11 w-full rounded-lg border border-input bg-input px-3 text-sm text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
@@ -37,6 +37,7 @@ export function TeamEmailPage() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [mailboxPending, setMailboxPending] = useState(false);
 
   const canSend = canSendTeamEmail(employee?.role);
   const activeMessage = messages.find((message) => message.id === activeId);
@@ -57,6 +58,40 @@ export function TeamEmailPage() {
   };
 
   useEffect(() => { if (canSend) void load(); }, [canSend]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const mailboxResult = params.get("mailbox");
+    if (!mailboxResult) return;
+    if (mailboxResult === "connected") setSuccess("Shared Gmail account connected. Team emails will send through Gmail.");
+    else setError("Gmail could not be connected. Check the Google OAuth setup and shared mailbox account, then try again.");
+    params.delete("mailbox");
+    const query = params.toString();
+    window.history.replaceState({}, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
+    void load();
+  }, []);
+
+  const connectMailbox = async () => {
+    setMailboxPending(true); setError("");
+    try {
+      const result = await api<{ authorizationUrl: string }>("/team-emails/mailbox/connect", { method: "POST", body: "{}" });
+      window.location.assign(result.authorizationUrl);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not start Google authorization.");
+      setMailboxPending(false);
+    }
+  };
+
+  const disconnectMailbox = async () => {
+    if (!window.confirm("Disconnect the shared Gmail account? Team email sending will stop until it is connected again.")) return;
+    setMailboxPending(true); setError("");
+    try {
+      await api<{ disconnected: boolean }>("/team-emails/mailbox/disconnect", { method: "POST", body: "{}" });
+      await load();
+      setSuccess("Shared Gmail account disconnected.");
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not disconnect Gmail."); }
+    finally { setMailboxPending(false); }
+  };
 
   const openMessage = (message: TeamEmail) => {
     setActiveId(message.id); setSubject(message.subject); setBody(message.body); setRecipientIds(message.recipientUserIds); setError(""); setSuccess("");
@@ -115,7 +150,8 @@ export function TeamEmailPage() {
     <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wide text-brand">Team communications</p><h1 className="mt-1 text-2xl font-semibold text-primary">Team Email</h1><p className="mt-1 max-w-2xl text-sm text-secondary">Draft an update and send it to selected employees or the sales team.</p></div><Button variant="secondary" onClick={newDraft} icon={<Plus size={16} />}>New draft</Button></div>
     {error && <p role="alert" className="rounded-lg border border-error-border bg-error-soft p-3 text-sm text-error">{error}</p>}
     {success && <p role="status" className="rounded-lg border border-success/30 bg-success-soft p-3 text-sm text-success">{success}</p>}
-    {!data?.emailConfigured && <p role="status" className="rounded-lg border border-warning/30 bg-warning-soft p-3 text-sm text-primary">The shared mail account is not configured on this server. In Render, set SMTP_USER and EMAIL_FROM to the Bark Gmail address and SMTP_PASSWORD to its Google App Password, then restart the service. You can save drafts while sending is disabled.</p>}
+    {data?.canManageMailbox && <Card className="flex flex-wrap items-center justify-between gap-4 p-4"><div><h2 className="font-semibold text-primary">Shared Gmail account</h2><p className="mt-1 text-sm text-secondary">{data.emailConfigured ? `Connected as ${data.mailboxConnectedEmail}. Team email sends through Gmail’s HTTPS API.` : data.mailboxSetupAvailable ? "Connect the Bark shared mailbox once to enable online sending." : "Add the Google OAuth credentials and token encryption key in the server environment first."}</p></div><div className="flex gap-2">{data.emailConfigured ? <Button type="button" variant="secondary" disabled={mailboxPending} onClick={() => void disconnectMailbox()} icon={<Unlink size={15} />}>Disconnect</Button> : <Button type="button" disabled={mailboxPending || !data.mailboxSetupAvailable} onClick={() => void connectMailbox()} icon={<Link2 size={15} />}>{mailboxPending ? "Connecting…" : "Connect Gmail"}</Button>}</div></Card>}
+    {!data?.emailConfigured && <p role="status" className="rounded-lg border border-warning/30 bg-warning-soft p-3 text-sm text-primary">Email delivery is not connected. An administrator can connect the Bark shared Gmail account above; drafts can still be saved.</p>}
     {loading ? <Card className="p-6 text-sm text-secondary">Loading team email…</Card> : <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
       <Card className="space-y-5 p-4 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-lg font-semibold text-primary">{readOnly ? "Sent email" : "Compose message"}</h2><p className="mt-1 text-sm text-secondary">From Bark’s shared mailbox, with replies directed to your work email.</p></div>{activeMessage && <span className={`rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${activeMessage.status === "sent" ? "bg-success-soft text-success" : activeMessage.status === "failed" ? "bg-error-soft text-error" : "bg-subtle text-secondary"}`}>{activeMessage.status}</span>}</div>

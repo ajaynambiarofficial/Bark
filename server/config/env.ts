@@ -8,6 +8,8 @@ const schema = z.object({
   DATABASE_SSL: z.enum(["true", "false"]).optional(),
   APP_ORIGIN: z.string().url().default("http://localhost:5173"),
   GOOGLE_CLIENT_ID: z.string().min(1).optional(),
+  GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
+  MAIL_TOKEN_ENCRYPTION_KEY: z.string().regex(/^[A-Fa-f0-9]{64}$/).optional(),
   SESSION_COOKIE_NAME: z.string().min(3).default("bark_session"),
   SESSION_TTL_HOURS: z.coerce.number().int().min(1).max(720).default(12),
   ALLOW_LOCAL_PASSWORD_RESET_LINKS: z.enum(["true", "false"]).default("false"),
@@ -42,4 +44,5 @@ export const env = {
   allowLocalPasswordResetLinks: parsed.data.ALLOW_LOCAL_PASSWORD_RESET_LINKS === "true" && ["localhost", "127.0.0.1"].includes(new URL(parsed.data.APP_ORIGIN).hostname),
   isProduction: parsed.data.NODE_ENV === "production",
   emailConfigured: Boolean(parsed.data.SMTP_HOST && parsed.data.SMTP_USER && parsed.data.SMTP_PASSWORD && parsed.data.EMAIL_FROM),
+  googleMailConfigured: Boolean(parsed.data.GOOGLE_CLIENT_ID && parsed.data.GOOGLE_CLIENT_SECRET && parsed.data.MAIL_TOKEN_ENCRYPTION_KEY && parsed.data.EMAIL_FROM),
 };
