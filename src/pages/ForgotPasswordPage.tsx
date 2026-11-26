@@ -40,7 +40,7 @@ function RequestPasswordReset() {
     finally { setPending(false); }
   };
 
-  return <Frame><Card className="p-6 sm:p-7"><div className="mb-5 grid size-11 place-items-center rounded-xl bg-brand-soft text-brand"><KeyRound size={21} /></div><h1 className="text-2xl font-semibold text-primary">Reset your password</h1><p className="mt-2 text-sm leading-6 text-secondary">Enter your work email. If it matches an active account, reset instructions will be prepared.</p>
+  return <Frame><Card className="p-6 sm:p-7"><div className="mb-5 grid size-11 place-items-center rounded-xl bg-brand-soft text-brand"><KeyRound size={21} /></div><h1 className="text-2xl font-semibold text-primary">Reset your password</h1><p className="mt-2 text-sm leading-6 text-secondary">Enter your work email. If it matches an active account, we’ll send a secure reset link.</p>
     <form onSubmit={(event) => void submit(event)} className="mt-6 space-y-4"><div><label htmlFor="reset-email" className="text-sm font-medium text-primary">Work email</label><input id="reset-email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} className="mt-1.5 min-h-11 w-full rounded-lg border border-input bg-input px-3 text-sm" /></div>
       {message && <div role="status" className="rounded-lg border border-success-border bg-success-soft p-3 text-sm text-primary"><p className="flex items-center gap-2"><CheckCircle2 size={16} />{message}</p>{localResetUrl && <p className="mt-2 break-all"><a className="font-medium text-brand underline" href={localResetUrl}>Open local password reset link</a></p>}</div>}
       {error && <p role="alert" className="rounded-lg border border-error-border bg-error-soft p-3 text-sm text-error">{error}</p>}

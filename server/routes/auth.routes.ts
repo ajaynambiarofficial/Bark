@@ -12,6 +12,8 @@ import { requireAuth } from "../middleware/auth.js";
 import { ApiError } from "../lib/errors.js";
 import { parseBody } from "../lib/validation.js";
 import { appendAudit } from "../services/audit.service.js";
+import { sendPasswordResetEmail } from "../services/password-reset-email.service.js";
+import { logger } from "../lib/logger.js";
 
 const router = Router();
 const loginSchema = z.object({ email: z.string().email().transform((value) => value.trim().toLowerCase()), password: z.string().min(1).max(1024), rememberMe: z.boolean().default(false) });
@@ -46,11 +48,18 @@ router.post("/forgot-password", async (request, response) => {
   await db.insert(passwordResetTokens).values({ userId: user?.id ?? null, email: input.email, tokenHash: hashResetToken(token), ipAddress, expiresAt });
   const resetUrl = new URL("/forgot-password", env.APP_ORIGIN);
   resetUrl.searchParams.set("token", token);
+  if (user?.id) {
+    try {
+      await sendPasswordResetEmail({ email: input.email, resetUrl: resetUrl.toString(), expiresInMinutes: 30 });
+    } catch (error) {
+      logger.error({ err: error }, "Password reset email failed");
+    }
+  }
   response.json({
     data: {
       message: env.allowLocalPasswordResetLinks
         ? "If an active account matches that email, use the local reset link below."
-        : "If an active account matches that email, reset instructions will be sent when email delivery is configured.",
+        : "If an active account matches that email, reset instructions have been sent.",
       ...(env.allowLocalPasswordResetLinks ? { localResetUrl: resetUrl.toString() } : {}),
     },
   });
