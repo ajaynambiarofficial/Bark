@@ -20,6 +20,7 @@ const reason = z.string().trim().min(3).max(1000);
 const listSchema = z.object({ search: z.string().trim().max(120).optional(), status: z.enum(["active", "inactive", "suspended"]).optional(), roleId: uuid.optional(), limit: z.coerce.number().int().min(1).max(100).default(30), offset: z.coerce.number().int().min(0).default(0) });
 const dashboardListSchema = z.object({ limit: z.coerce.number().int().min(1).max(100).default(100), offset: z.coerce.number().int().min(0).default(0) });
 const userCreateSchema = z.object({ employeeCode: z.string().trim().min(2).max(80), email: z.string().trim().email().transform((value) => value.toLowerCase()), displayName: z.string().trim().min(2).max(160), password: z.string().min(14).max(1024), roleId: uuid, department: z.string().trim().min(2).max(120), assignment: z.string().trim().min(2).max(160), clearanceLevel: z.number().int().min(1).max(100).optional(), clinicIds: z.array(uuid).max(100).default([]) });
+const userPasswordSchema = z.object({ password: z.string().min(14).max(1024), reason });
 const userUpdateSchema = z.object({ employeeCode: z.string().trim().min(2).max(80).optional(), email: z.string().trim().email().transform((value) => value.toLowerCase()).optional(), displayName: z.string().trim().min(2).max(160).optional(), contactPhone: z.string().trim().max(40).nullable().optional(), profileBio: z.string().trim().max(500).nullable().optional(), roleId: uuid.optional(), department: z.string().trim().min(2).max(120).optional(), assignment: z.string().trim().min(2).max(160).optional(), accountStatus: z.enum(["active", "inactive", "suspended"]).optional(), clearanceLevel: z.number().int().min(1).max(100).optional(), clinicIds: z.array(uuid).max(100).optional(), reason });
 const roleSchema = z.object({ key: z.string().trim().regex(/^[a-z][a-z0-9-]{1,62}$/), name: z.string().trim().min(2).max(120), description: z.string().trim().max(1000).default(""), clearanceLevel: z.number().int().min(1).max(100), permissionKeys: z.array(z.string().min(1)).default([]) });
 const clinicSchema = z.object({ code: z.string().trim().min(2).max(40), name: z.string().trim().min(2).max(160), address: z.string().trim().max(1000).default(""), timezone: z.string().trim().min(3).max(80).default("Asia/Calcutta"), phone: z.string().trim().max(30).optional(), email: z.string().trim().email().optional(), operatingHours: z.record(z.string(), z.unknown()).default({}), settings: z.record(z.string(), z.unknown()).default({}) });
@@ -242,6 +243,25 @@ router.patch("/users/:id", requirePermission("admin:users"), async (request, res
     return user;
   });
   response.json({ data: updated });
+});
+
+router.post("/users/:id/password", requirePermission("admin:users"), async (request, response) => {
+  const id = uuid.parse(request.params.id);
+  const input = parseBody(request, userPasswordSchema);
+  const actor = request.auth!;
+  const [current] = await db.select({ id: users.id, displayName: users.displayName, clearanceLevel: users.clearanceLevel }).from(users).where(eq(users.id, id)).limit(1);
+  if (!current) throw new ApiError(404, "USER_NOT_FOUND", "The user was not found.");
+  if (current.id === actor.userId) throw new ApiError(409, "SELF_PASSWORD_CHANGE_DENIED", "Use the account password reset flow to change your own password.");
+  if (current.clearanceLevel >= actor.clearanceLevel && actor.clearanceLevel < 100) throw new ApiError(403, "CLEARANCE_DENIED", "You cannot change the password for this account.");
+  const passwordHash = await hashPassword(input.password);
+  const now = new Date();
+  const result = await db.transaction(async (transaction) => {
+    await transaction.update(users).set({ passwordHash, failedLoginCount: 0, lockedUntil: null, updatedAt: now }).where(eq(users.id, id));
+    const revoked = await transaction.update(sessions).set({ revokedAt: now, revokedReason: "Password changed by administrator" }).where(and(eq(sessions.userId, id), isNull(sessions.revokedAt))).returning({ id: sessions.id });
+    await appendAudit(transaction, { actor, action: "admin.user_password_changed", entityType: "user", entityId: id, newValue: { passwordChanged: true, sessionsRevoked: revoked.length }, reason: input.reason, requestId: request.requestId, ipAddress: request.ip });
+    return { sessionsRevoked: revoked.length };
+  });
+  response.json({ data: { userId: current.id, displayName: current.displayName, ...result } });
 });
 
 router.post("/users/:id/revoke-sessions", requirePermission("admin:emergency"), async (request, response) => {
