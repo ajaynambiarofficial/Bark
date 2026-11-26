@@ -30,6 +30,8 @@ const completedKey = (employeeId: string) => `bark.product-tour.v1.completed.${e
 
 export function ProductTour({ onOpenMobileNav, onCloseMobileNav }: { onOpenMobileNav(): void; onCloseMobileNav(): void }) {
   const { employee } = useAuth();
+  const employeeId = employee?.id;
+  const employeeRole = employee?.role;
   const { isEnabled, isLoading } = useModuleVisibility();
   const [open, setOpen] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
@@ -39,32 +41,32 @@ export function ProductTour({ onOpenMobileNav, onCloseMobileNav }: { onOpenMobil
   const launchedFor = useRef<string | null>(null);
 
   const steps = useMemo<TourStep[]>(() => {
-    const visibleModules = APP_MODULES.filter((module) => isEnabled(module.key) && (module.key !== "team.team-email" || (employee ? canSendTeamEmail(employee.role) : false)));
+    const visibleModules = APP_MODULES.filter((module) => isEnabled(module.key) && (module.key !== "team.team-email" || (employeeRole ? canSendTeamEmail(employeeRole) : false)));
     const tourSteps: TourStep[] = [{ title: "Welcome to Bark", description: "This quick tour shows you the main sections of your workspace. Use Next to move through it, or skip and replay the tour later from your profile menu.", target: null }];
     for (const module of visibleModules) {
       if (module.group === "Pawcare" && !tourSteps.some((step) => step.target === "pawcare-heading")) {
         tourSteps.push({ title: "Pawcare workspace", description: "Pawcare tools for bookings, clinic appointments, estimates, chat, pharmacy, and diagnostics are grouped here.", target: "pawcare-heading" });
       }
       tourSteps.push({ title: module.label, description: descriptions[module.key], target: module.key });
-      if (module.key === "team.team-email" && (employee?.role === "god" || employee?.role === "system-administrator")) {
+      if (module.key === "team.team-email" && (employeeRole === "god" || employeeRole === "system-administrator")) {
         tourSteps.push({ title: "Admin Control", description: "Manage users, review escalations, configure services, and control which sections staff can see.", target: "admin-control" });
       }
     }
-    if ((employee?.role === "god" || employee?.role === "system-administrator") && !tourSteps.some((step) => step.target === "admin-control")) {
+    if ((employeeRole === "god" || employeeRole === "system-administrator") && !tourSteps.some((step) => step.target === "admin-control")) {
       const firstPawcare = tourSteps.findIndex((step) => step.target === "pawcare-heading");
       tourSteps.splice(firstPawcare >= 0 ? firstPawcare : tourSteps.length, 0, { title: "Admin Control", description: "Manage users, review escalations, configure services, and control which sections staff can see.", target: "admin-control" });
     }
     tourSteps.push({ title: "Your profile and settings", description: "Update your profile, choose a theme, and reopen this tour whenever you need it.", target: "profile-menu" });
     return tourSteps;
-  }, [employee, isEnabled]);
+  }, [employeeRole, isEnabled]);
 
   const close = useCallback(() => {
     setOpen(false);
-    if (employee) {
-      try { window.localStorage.setItem(completedKey(employee.id), "true"); } catch { /* Tour can still close if storage is unavailable. */ }
+    if (employeeId) {
+      try { window.localStorage.setItem(completedKey(employeeId), "true"); } catch { /* Tour can still close if storage is unavailable. */ }
     }
     onCloseMobileNav();
-  }, [employee, onCloseMobileNav]);
+  }, [employeeId, onCloseMobileNav]);
 
   const start = useCallback(() => {
     setStepIndex(0);
@@ -73,15 +75,18 @@ export function ProductTour({ onOpenMobileNav, onCloseMobileNav }: { onOpenMobil
   }, [onOpenMobileNav]);
 
   useEffect(() => {
-    if (!employee || isLoading || launchedFor.current === employee.id) return;
-    launchedFor.current = employee.id;
+    if (!employeeId || isLoading || launchedFor.current === employeeId) return;
     let completed = false;
-    try { completed = window.localStorage.getItem(completedKey(employee.id)) === "true"; } catch { /* Fall through to a first-session guide. */ }
+    try { completed = window.localStorage.getItem(completedKey(employeeId)) === "true"; } catch { /* Fall through to a first-session guide. */ }
     if (!completed) {
-      const timer = window.setTimeout(start, 650);
+      const timer = window.setTimeout(() => {
+        launchedFor.current = employeeId;
+        start();
+      }, 650);
       return () => window.clearTimeout(timer);
     }
-  }, [employee, isLoading, start]);
+    launchedFor.current = employeeId;
+  }, [employeeId, isLoading, start]);
 
   useEffect(() => {
     const openTour = () => start();

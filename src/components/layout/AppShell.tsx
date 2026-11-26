@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Outlet } from "react-router";
 import { useAuth } from "../../auth/AuthContext";
 import { Sidebar } from "./Sidebar";
@@ -12,6 +12,8 @@ export function AppShell() {
   const [collapsed, setCollapsed] = useState(() => window.localStorage.getItem(SIDEBAR_KEY) === "true");
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const openMobileNavigation = useCallback(() => setMobileOpen(true), []);
+
   if (!employee) return null;
 
   const toggleCollapsed = () => {
@@ -22,12 +24,12 @@ export function AppShell() {
     });
   };
 
-  const closeMobileNavigation = () => {
+  const closeMobileNavigation = useCallback(() => {
     setMobileOpen(false);
     window.requestAnimationFrame(() => {
       document.querySelector<HTMLButtonElement>('[aria-label="Open navigation"]')?.focus();
     });
-  };
+  }, []);
 
   return (
     <div className="flex min-h-dvh bg-app text-primary">
@@ -39,12 +41,12 @@ export function AppShell() {
         onCloseMobile={closeMobileNavigation}
       />
       <div className="min-w-0 flex-1">
-        <TopHeader onOpenMobile={() => setMobileOpen(true)} />
+        <TopHeader onOpenMobile={openMobileNavigation} />
         <main id="main-content" className="mx-auto w-full max-w-[1440px] px-4 py-7 sm:px-6 sm:py-9 lg:px-10 lg:py-11">
           <Outlet />
         </main>
       </div>
-      <ProductTour onOpenMobileNav={() => setMobileOpen(true)} onCloseMobileNav={closeMobileNavigation} />
+      <ProductTour onOpenMobileNav={openMobileNavigation} onCloseMobileNav={closeMobileNavigation} />
     </div>
   );
 }
