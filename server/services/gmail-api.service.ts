@@ -95,7 +95,10 @@ export async function sendWithGmailApi(input: {
   senderRole: string;
   senderEmail: string;
   subject: string;
-  body: string;
+  body?: string;
+  text?: string;
+  html?: string;
+  attachments?: Array<{ filename: string; contentType: string; content: Buffer }>;
   recipients: Array<{ email: string; displayName: string }>;
 }) {
   const [mailbox] = await db.select({ encryptedRefreshToken: teamEmailMailbox.encryptedRefreshToken, connectedEmail: teamEmailMailbox.connectedEmail })
@@ -113,6 +116,7 @@ export async function sendWithGmailApi(input: {
     throw new Error("An email address contains invalid header characters.");
   }
   const boundary = `bark_${randomBytes(18).toString("hex")}`;
+  const alternativeBoundary = `bark_alt_${randomBytes(18).toString("hex")}`;
   const encodeHeader = (value: string) => {
     const chunks: string[] = [];
     let chunk = "";
@@ -138,10 +142,22 @@ export async function sendWithGmailApi(input: {
     "MIME-Version: 1.0",
     `Content-Type: multipart/alternative; boundary="${boundary}"`,
   ];
-  const plainText = `${input.body}\n\n— ${sender} via Bark`;
+  const plainText = input.text ?? `${input.body ?? ""}\n\n— ${sender} via Bark`;
   const htmlEscape = (value: string) => value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!);
-  const htmlBody = `<div style="margin:0;background:#f4f6f4;padding:28px 12px;font-family:Arial,Helvetica,sans-serif;color:#1b2b22"><div style="max-width:680px;margin:0 auto;background:#fff;border:1px solid #e2e8e3;border-radius:14px;overflow:hidden"><div style="padding:22px 26px;background:#173b2d;color:#fff"><p style="margin:0 0 8px;color:#bce4ce;font-size:11px;font-weight:bold;letter-spacing:1px;text-transform:uppercase">Bark team update</p><h1 style="margin:0;font-size:21px;line-height:1.35">${htmlEscape(input.subject)}</h1></div><div style="padding:24px 26px;font-size:14px;line-height:1.7">${htmlEscape(input.body).replace(/\r?\n/g, "<br>")}</div><div style="padding:0 26px 22px;color:#66756b;font-size:12px">Sent by ${htmlEscape(sender)} via Bark. Replies go to ${htmlEscape(input.senderEmail)}.</div></div></div>`;
-  const mime = `${headers.join("\r\n")}\r\n\r\n--${boundary}\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n${wrapBase64(Buffer.from(plainText, "utf8").toString("base64"))}\r\n--${boundary}\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n${wrapBase64(Buffer.from(htmlBody, "utf8").toString("base64"))}\r\n--${boundary}--`;
+  const htmlBody = input.html ?? `<div style="margin:0;background:#f4f6f4;padding:28px 12px;font-family:Arial,Helvetica,sans-serif;color:#1b2b22"><div style="max-width:680px;margin:0 auto;background:#fff;border:1px solid #e2e8e3;border-radius:14px;overflow:hidden"><div style="padding:22px 26px;background:#173b2d;color:#fff"><p style="margin:0 0 8px;color:#bce4ce;font-size:11px;font-weight:bold;letter-spacing:1px;text-transform:uppercase">Bark team update</p><h1 style="margin:0;font-size:21px;line-height:1.35">${htmlEscape(input.subject)}</h1></div><div style="padding:24px 26px;font-size:14px;line-height:1.7">${htmlEscape(input.body ?? "").replace(/\r?\n/g, "<br>")}</div><div style="padding:0 26px 22px;color:#66756b;font-size:12px">Sent by ${htmlEscape(sender)} via Bark. Replies go to ${htmlEscape(input.senderEmail)}.</div></div></div>`;
+  const alternative = `--${alternativeBoundary}\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n${wrapBase64(Buffer.from(plainText, "utf8").toString("base64"))}\r\n--${alternativeBoundary}\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n${wrapBase64(Buffer.from(htmlBody, "utf8").toString("base64"))}\r\n--${alternativeBoundary}--`;
+  const attachments = input.attachments ?? [];
+  const contentType = attachments.length ? `multipart/mixed; boundary="${boundary}"` : `multipart/alternative; boundary="${alternativeBoundary}"`;
+  const bodyParts = attachments.length ? [
+    `--${boundary}\r\nContent-Type: multipart/alternative; boundary="${alternativeBoundary}"\r\n\r\n${alternative}`,
+    ...attachments.map((attachment) => {
+      const filename = attachment.filename.replace(/["\\\r\n]/g, "_");
+      const safeContentType = /^[\w.+-]+\/[\w.+-]+$/.test(attachment.contentType) ? attachment.contentType : "application/octet-stream";
+      return `--${boundary}\r\nContent-Type: ${safeContentType}; name="${filename}"\r\nContent-Disposition: attachment; filename="${filename}"\r\nContent-Transfer-Encoding: base64\r\n\r\n${wrapBase64(attachment.content.toString("base64"))}`;
+    }),
+    `--${boundary}--`,
+  ].join("\r\n") : alternative;
+  const mime = `${headers.slice(0, -1).join("\r\n")}\r\nContent-Type: ${contentType}\r\n\r\n${bodyParts}`;
   const raw = Buffer.from(mime, "utf8").toString("base64url");
   const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
     method: "POST",

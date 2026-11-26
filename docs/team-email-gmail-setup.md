@@ -1,6 +1,6 @@
 # Team Email: Gmail API setup
 
-Team Email sends with the Gmail API over HTTPS. This works on Render Free, where outbound SMTP is blocked. Escalation notifications continue to use the separately configured SMTP transport.
+Team Email and escalation notifications send with the Gmail API over HTTPS. This works on Render Free, where outbound SMTP is blocked. Escalation notifications include a PDF summary and go to the configured escalation recipients.
 
 ## Google Cloud setup
 
