@@ -1,9 +1,11 @@
-import { useMemo, useState } from "react";
-import { ArrowUpRight, BadgePercent, BookOpen, Check, Clock3, Mail, MapPin, Package, Phone, Search, Stethoscope, X } from "lucide-react";
+import { lazy, Suspense, useMemo, useState } from "react";
+import { ArrowUpRight, BadgePercent, BookOpen, Check, Clock3, Mail, Map as MapIcon, MapPin, Package, Phone, Search, Stethoscope, X } from "lucide-react";
 import { Card } from "../components/ui/Card";
 import guideData from "../features/guide/guide-data.json";
 
-type GuideTab = "packages" | "services" | "contacts" | "locations" | "discounts";
+const ClinicMap = lazy(() => import("../features/guide/ClinicMap").then((module) => ({ default: module.ClinicMap })));
+
+type GuideTab = "packages" | "services" | "contacts" | "locations" | "map" | "discounts";
 type PackageCategory = "all" | "wellness" | "grooming";
 type ServiceCategory = "consultation" | "vaccination" | "grooming";
 
@@ -45,6 +47,7 @@ const mainTabs: { id: GuideTab; label: string; icon: typeof Package }[] = [
   { id: "services", label: "Services", icon: Stethoscope },
   { id: "contacts", label: "Clinic POC", icon: Phone },
   { id: "locations", label: "Clinic Location", icon: MapPin },
+  { id: "map", label: "Find a Clinic", icon: MapIcon },
   { id: "discounts", label: "Discounts", icon: BadgePercent },
 ];
 
@@ -196,6 +199,7 @@ export function GuidePage() {
         {tab === "services" && <ServiceSection />}
         {tab === "contacts" && <ClinicDirectory />}
         {tab === "locations" && <ClinicLocations />}
+        {tab === "map" && <Suspense fallback={<Card className="p-8 text-center text-sm text-secondary">Loading the clinic map…</Card>}><ClinicMap /></Suspense>}
         {tab === "discounts" && <div aria-label="Discounts content" />}
       </section>
     </div>

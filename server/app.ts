@@ -19,6 +19,7 @@ import { customerRouter } from "./routes/customer.routes.js";
 import { noticeRouter } from "./routes/notice.routes.js";
 import { teamEmailRouter } from "./routes/team-email.routes.js";
 import { moduleRouter } from "./routes/module.routes.js";
+import { clinicMapRouter } from "./routes/clinic-map.routes.js";
 import { resolve } from "node:path";
 
 export function createApp() {
@@ -35,6 +36,7 @@ export function createApp() {
         // googleusercontent.com host before returning the CSV response.
         connectSrc: ["'self'", "https://docs.google.com", "https://*.googleusercontent.com", "https://accounts.google.com/gsi/"],
         frameSrc: ["'self'", "https://accounts.google.com/gsi/"],
+        imgSrc: ["'self'", "data:", "https://tile.openstreetmap.org"],
         scriptSrc: ["'self'", "https://accounts.google.com/gsi/client"],
         styleSrc: ["'self'", "'unsafe-inline'", "https:"],
         // Local LAN testing uses HTTP; upgrading same-origin bundles to HTTPS leaves the SPA blank.
@@ -64,6 +66,7 @@ export function createApp() {
   app.use("/api/auth", authRouter);
   app.use("/api", requireAuth);
   app.use("/api/modules", moduleRouter);
+  app.use("/api/clinic-map", clinicMapRouter);
   app.use("/api/bookings", bookingRouter);
   app.use("/api/escalations", escalationRouter);
   app.use("/api/calendar", calendarRouter);

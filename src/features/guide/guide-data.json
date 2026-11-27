@@ -713,9 +713,9 @@
   ],
   "CLINIC_POC": [
     {
-      "clinic": "Hosa Road",
-      "lat": 12.8998,
-      "lng": 77.6413,
+      "clinic": "Singasandra (Hosur Road)",
+      "lat": 12.8794568,
+      "lng": 77.6455474,
       "number": "88679 44007",
       "manager": "Pamela Majumder",
       "email": "pamela.mlovespets@supertails.in",
@@ -723,12 +723,12 @@
       "zone": "South & East",
       "zonalHead": "Niraj Manani",
       "address": "Ground Floor, Athira Heights, 795A, NH 44, AECS Layout, Singasandra, Bengaluru, Karnataka 560114",
-      "hours": "10 AM – 7 PM"
+      "hours": "10 AM – 10 PM · All days"
     },
     {
-      "clinic": "Bannerghatta",
-      "lat": 12.8845,
-      "lng": 77.5972,
+      "clinic": "Bannerghatta Road",
+      "lat": 12.8825101,
+      "lng": 77.5958304,
       "number": "99028 57395",
       "manager": "Dheeraj",
       "email": "dheeraj.rlovespets@supertails.in",
@@ -740,8 +740,8 @@
     },
     {
       "clinic": "Banashankari",
-      "lat": 12.928,
-      "lng": 77.549,
+      "lat": 12.9190414,
+      "lng": 77.5639995,
       "number": "80502 12988",
       "manager": "Kumar T",
       "email": "kumar.t@supertails.in",
@@ -753,8 +753,8 @@
     },
     {
       "clinic": "Brookfield",
-      "lat": 12.965,
-      "lng": 77.713,
+      "lat": 12.9585762,
+      "lng": 77.7157019,
       "number": "80502 12079",
       "manager": "Shilo",
       "email": "shilolovespets@supertails.in",
@@ -766,8 +766,8 @@
     },
     {
       "clinic": "Whitefield",
-      "lat": 12.9698,
-      "lng": 77.75,
+      "lat": 12.9846718,
+      "lng": 77.7491112,
       "number": "80501 78007",
       "manager": "Abhilash",
       "email": "abhilash.mlovespets@supertails.in",
@@ -779,8 +779,8 @@
     },
     {
       "clinic": "KR Puram",
-      "lat": 12.9975,
-      "lng": 77.698,
+      "lat": 13.0198356,
+      "lng": 77.7087264,
       "number": "80502 23007",
       "manager": "Deepak Alwin",
       "email": "deepak.alovespets@supertails.in",
@@ -788,12 +788,12 @@
       "zone": "South & East",
       "zonalHead": "Niraj Manani",
       "address": "646/1A and 646/1B, Athithi Layout, S.T Halli, Bhattarahalli, Krishnarajapuram, Bengaluru, Karnataka 560036",
-      "hours": "10 AM – 7 PM"
+      "hours": "9 AM – 7 PM · All days"
     },
     {
-      "clinic": "RMV",
-      "lat": 13.0278,
-      "lng": 77.5698,
+      "clinic": "RMV 2nd Stage",
+      "lat": 13.0385346,
+      "lng": 77.5649375,
       "number": "80501 45007",
       "manager": "Aishwarya",
       "email": "aishwarya.klovespets@supertails.in",
@@ -804,9 +804,9 @@
       "hours": "10 AM – 7 PM"
     },
     {
-      "clinic": "Rajaji Nagar",
-      "lat": 12.9985,
-      "lng": 77.557,
+      "clinic": "Rajajinagar",
+      "lat": 12.9987661,
+      "lng": 77.5556377,
       "number": "99028 57893",
       "manager": "Saji R",
       "email": "saji.rlovespets@supertails.in",
@@ -818,8 +818,8 @@
     },
     {
       "clinic": "RT Nagar",
-      "lat": 13.023,
-      "lng": 77.595,
+      "lat": 13.0167744,
+      "lng": 77.5914971,
       "number": "89048 04007",
       "manager": "Abhilash M",
       "email": "abhilash.mlovespets@supertails.in",
@@ -827,12 +827,12 @@
       "zone": "North & Central",
       "zonalHead": "Akshay Amrith",
       "address": "First Floor, No. 160, RT Nagar Main Rd, Phase 3, Matadahalli, Krishnappa Block, Ganganagar, Bengaluru, Karnataka 560032",
-      "hours": "10 AM – 7 PM"
+      "hours": "9 AM – 10 PM · All days"
     },
     {
       "clinic": "Koramangala",
-      "lat": 12.9352,
-      "lng": 77.6245,
+      "lat": 12.9255068,
+      "lng": 77.6356692,
       "number": "80502 13620",
       "manager": "Md Zabi",
       "email": "mohammed.zabiullahlovespets@supertails.in",
@@ -844,8 +844,8 @@
     },
     {
       "clinic": "Kalyan Nagar",
-      "lat": 13.018,
-      "lng": 77.639,
+      "lat": 13.0092304,
+      "lng": 77.6431912,
       "number": "99028 59265",
       "manager": "Kumar T",
       "email": "kumar.t@supertails.in",
@@ -857,15 +857,15 @@
     },
     {
       "clinic": "Indiranagar",
-      "lat": 12.9719,
-      "lng": 77.6412,
+      "lat": 12.9734459,
+      "lng": 77.6468308,
       "number": "80501 98007",
       "manager": "Dinesh",
       "email": "dinesh.rlovespets@supertails.in",
       "phone": "8892242271",
       "zone": "North & Central",
       "zonalHead": "Akshay Amrith",
-      "address": null,
+      "address": "Plot No. 709, 7th Main Road, 80ft Road, HAL 2nd Stage, Bengaluru, Karnataka 560038",
       "hours": "9 AM – 10 PM · All days"
     }
   ],

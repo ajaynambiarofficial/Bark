@@ -1,0 +1,63 @@
+.clinic-map.leaflet-container {
+  background: var(--color-subtle, #eef1ee);
+  font: inherit;
+  z-index: 0;
+}
+
+.clinic-map-marker-shell,
+.clinic-map-origin-shell {
+  border: 0;
+  background: transparent;
+}
+
+.clinic-map-marker {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 2px solid white;
+  border-radius: 50%;
+  background: #246b49;
+  box-shadow: 0 1px 5px rgb(0 0 0 / 35%);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.clinic-map-marker--nearest {
+  background: #c43232;
+  transform: scale(1.2);
+}
+
+.clinic-map-marker--selected {
+  background: #165fa8;
+  transform: scale(1.15);
+}
+
+.clinic-map-origin-dot,
+.clinic-map-legend-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  border: 2px solid white;
+  border-radius: 50%;
+  background: #246b49;
+  box-shadow: 0 0 0 1px rgb(20 40 30 / 35%);
+}
+
+.clinic-map-origin-dot {
+  width: 16px;
+  height: 16px;
+  border: 3px solid white;
+  background: #1765c0;
+  box-shadow: 0 0 0 5px rgb(23 101 192 / 25%);
+}
+
+.clinic-map-legend-dot--nearest {
+  background: #c43232;
+}
+
+.clinic-map .leaflet-control-attribution {
+  font-size: 10px;
+}
