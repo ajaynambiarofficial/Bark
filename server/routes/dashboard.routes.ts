@@ -1,13 +1,22 @@
 import { Router } from "express";
-import { and, count, eq, gt, inArray, isNull, lt, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, gt, inArray, isNull, lt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/client.js";
-import { auditEvents, bookings, clinics, escalations, users } from "../db/schema.js";
+import { agentGoals, auditEvents, bookings, clinics, escalations, users } from "../db/schema.js";
 import { requirePermission } from "../middleware/auth.js";
 import { parseQuery } from "../lib/validation.js";
 
 const router = Router();
 const dateQuery = z.object({ from: z.coerce.date().default(() => new Date(new Date().setHours(0, 0, 0, 0))), to: z.coerce.date().default(() => new Date()) });
+
+router.get("/my-goals", requirePermission("dashboard:view:self"), async (request, response) => {
+  const today = new Date().toISOString().slice(0, 10);
+  const records = await db.select({ id: agentGoals.id, title: agentGoals.title, description: agentGoals.description, targetValue: agentGoals.targetValue, unit: agentGoals.unit, startsOn: agentGoals.startsOn, endsOn: agentGoals.endsOn })
+    .from(agentGoals)
+    .where(and(eq(agentGoals.userId, request.auth!.userId), eq(agentGoals.active, true), gte(agentGoals.endsOn, today)))
+    .orderBy(desc(agentGoals.startsOn));
+  response.json({ data: records });
+});
 
 router.get("/summary", requirePermission("dashboard:view:self"), async (request, response) => {
   const { from, to } = parseQuery(request, dateQuery);

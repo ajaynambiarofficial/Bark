@@ -8,6 +8,7 @@ import { roleDefinitions } from "../data/employees";
 import { TodaySnapshot } from "../components/dashboard/TodaySnapshot";
 import { BookingGoalTracker } from "../components/dashboard/BookingGoalTracker";
 import { OperationalSummary } from "../components/dashboard/OperationalSummary";
+import { MyAgentGoals } from "../components/dashboard/MyAgentGoals";
 
 function getGreeting(date = new Date()): string {
   const hour = date.getHours();
@@ -57,6 +58,8 @@ export function WelcomePage() {
       />
 
       {employee.role === "sales-agent" && <BookingGoalTracker />}
+
+      {employee.role === "sales-agent" && <MyAgentGoals />}
 
       <OperationalSummary />
 

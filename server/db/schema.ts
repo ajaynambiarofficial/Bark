@@ -1,4 +1,4 @@
-import { boolean, index, integer, jsonb, numeric, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
+import { boolean, date, index, integer, jsonb, numeric, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 const timestamps = {
@@ -64,6 +64,21 @@ export const users = pgTable("users", {
   deactivatedAt: timestamp("deactivated_at", { withTimezone: true }),
   ...timestamps,
 }, (table) => [uniqueIndex("users_email_lower_unique").on(sql`lower(${table.email})`), index("users_role_idx").on(table.roleId), index("users_status_idx").on(table.accountStatus)]);
+
+export const agentGoals = pgTable("agent_goals", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 160 }).notNull(),
+  description: text("description").notNull().default(""),
+  targetValue: numeric("target_value", { precision: 14, scale: 2 }).notNull(),
+  unit: varchar("unit", { length: 40 }).notNull(),
+  startsOn: date("starts_on").notNull(),
+  endsOn: date("ends_on").notNull(),
+  active: boolean("active").notNull().default(true),
+  createdBy: uuid("created_by").notNull().references(() => users.id),
+  updatedBy: uuid("updated_by").notNull().references(() => users.id),
+  ...timestamps,
+}, (table) => [index("agent_goals_user_active_idx").on(table.userId, table.active), index("agent_goals_period_idx").on(table.startsOn, table.endsOn)]);
 
 export const userPermissions = pgTable("user_permissions", {
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),

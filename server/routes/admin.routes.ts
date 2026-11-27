@@ -2,7 +2,7 @@ import { Router } from "express";
 import { aliasedTable, and, asc, desc, eq, gt, ilike, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/client.js";
-import { applicationSettings, assignmentRules, auditEvents, clinicServices, clinics, escalationActivity, escalations, featureFlags, offers, permissions, rolePermissions, roles, services, sessions, slaPolicies, userClinics, userPermissions, users } from "../db/schema.js";
+import { agentGoals, applicationSettings, assignmentRules, auditEvents, clinicServices, clinics, escalationActivity, escalations, featureFlags, offers, permissions, rolePermissions, roles, services, sessions, slaPolicies, userClinics, userPermissions, users } from "../db/schema.js";
 import { hashPassword } from "../auth/password.js";
 import { requireClearance, requirePermission } from "../middleware/auth.js";
 import { ApiError } from "../lib/errors.js";
@@ -26,6 +26,12 @@ const roleSchema = z.object({ key: z.string().trim().regex(/^[a-z][a-z0-9-]{1,62
 const clinicSchema = z.object({ code: z.string().trim().min(2).max(40), name: z.string().trim().min(2).max(160), address: z.string().trim().max(1000).default(""), timezone: z.string().trim().min(3).max(80).default("Asia/Calcutta"), phone: z.string().trim().max(30).optional(), email: z.string().trim().email().optional(), operatingHours: z.record(z.string(), z.unknown()).default({}), settings: z.record(z.string(), z.unknown()).default({}) });
 const slaSchema = z.object({ name: z.string().trim().min(2).max(120), issueType: z.enum(["standard", "escalation"]), category: z.string().trim().max(80).optional(), priority: z.enum(["Standard", "P1", "P2", "P3"]), targetMinutes: z.number().int().min(1).max(525_600), active: z.boolean().default(true) });
 const ruleSchema = z.object({ name: z.string().trim().min(2).max(160), category: z.string().trim().min(2).max(80), clinicId: uuid.optional(), ownerId: uuid.optional(), team: z.string().trim().max(120).optional(), priority: z.number().int().min(1).max(10_000).default(100), active: z.boolean().default(true) });
+const goalDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD for goal dates.").refine((value) => {
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value;
+}, "Enter a valid calendar date.");
+const agentGoalInputSchema = z.object({ userId: uuid, title: z.string().trim().min(2).max(160), description: z.string().trim().max(2000).default(""), targetValue: z.number().positive().max(1_000_000_000), unit: z.string().trim().min(1).max(40), startsOn: goalDate, endsOn: goalDate, reason });
+const agentGoalUpdateSchema = agentGoalInputSchema.omit({ userId: true }).partial().extend({ active: z.boolean().optional(), reason });
 
 async function assertAssignableRole(roleId: string, actorClearance: number) {
   const [role] = await db.select().from(roles).where(eq(roles.id, roleId)).limit(1);
@@ -35,6 +41,45 @@ async function assertAssignableRole(roleId: string, actorClearance: number) {
 }
 
 router.use(requireClearance(90));
+
+router.get("/agent-goals", requirePermission("admin:users"), async (_request, response) => {
+  const rows = await db.select({ goal: agentGoals, agent: { id: users.id, displayName: users.displayName, email: users.email, department: users.department }, role: { key: roles.key, name: roles.name } })
+    .from(agentGoals).innerJoin(users, eq(agentGoals.userId, users.id)).innerJoin(roles, eq(users.roleId, roles.id))
+    .orderBy(desc(agentGoals.active), asc(users.displayName), desc(agentGoals.startsOn));
+  response.json({ data: rows.map(({ goal, agent, role }) => ({ ...goal, agent, role })) });
+});
+
+router.post("/agent-goals", requirePermission("admin:users"), async (request, response) => {
+  const input = parseBody(request, agentGoalInputSchema);
+  if (input.endsOn < input.startsOn) throw new ApiError(400, "GOAL_PERIOD_INVALID", "The end date must be on or after the start date.");
+  const [agent] = await db.select({ id: users.id, displayName: users.displayName, roleKey: roles.key, accountStatus: users.accountStatus }).from(users).innerJoin(roles, eq(users.roleId, roles.id)).where(eq(users.id, input.userId)).limit(1);
+  if (!agent || agent.accountStatus !== "active" || !agent.roleKey.includes("agent")) throw new ApiError(400, "GOAL_AGENT_INVALID", "Select an active agent account.");
+  const actor = request.auth!;
+  const [created] = await db.transaction(async (transaction) => {
+    const records = await transaction.insert(agentGoals).values({ userId: input.userId, title: input.title, description: input.description, targetValue: String(input.targetValue), unit: input.unit, startsOn: input.startsOn, endsOn: input.endsOn, createdBy: actor.userId, updatedBy: actor.userId }).returning();
+    await appendAudit(transaction, { actor, action: "admin.agent_goal_created", entityType: "agent_goal", entityId: records[0]!.id, newValue: { userId: input.userId, title: input.title, description: input.description, targetValue: input.targetValue, unit: input.unit, startsOn: input.startsOn, endsOn: input.endsOn }, reason: input.reason, requestId: request.requestId, ipAddress: request.ip });
+    return records;
+  });
+  response.status(201).json({ data: { ...created, agent: { id: agent.id, displayName: agent.displayName } } });
+});
+
+router.patch("/agent-goals/:id", requirePermission("admin:users"), async (request, response) => {
+  const id = uuid.parse(request.params.id);
+  const input = parseBody(request, agentGoalUpdateSchema);
+  const [current] = await db.select().from(agentGoals).where(eq(agentGoals.id, id)).limit(1);
+  if (!current) throw new ApiError(404, "GOAL_NOT_FOUND", "The agent goal was not found.");
+  const startsOn = input.startsOn ?? current.startsOn;
+  const endsOn = input.endsOn ?? current.endsOn;
+  if (endsOn < startsOn) throw new ApiError(400, "GOAL_PERIOD_INVALID", "The end date must be on or after the start date.");
+  const actor = request.auth!;
+  const { reason: changeReason, targetValue, ...changes } = input;
+  const [updated] = await db.transaction(async (transaction) => {
+    const records = await transaction.update(agentGoals).set({ ...changes, ...(targetValue === undefined ? {} : { targetValue: String(targetValue) }), updatedBy: actor.userId, updatedAt: new Date() }).where(eq(agentGoals.id, id)).returning();
+    await appendAudit(transaction, { actor, action: input.active === false ? "admin.agent_goal_archived" : input.active === true && !current.active ? "admin.agent_goal_restored" : "admin.agent_goal_updated", entityType: "agent_goal", entityId: id, previousValue: { userId: current.userId, title: current.title, description: current.description, targetValue: current.targetValue, unit: current.unit, startsOn: current.startsOn, endsOn: current.endsOn, active: current.active }, newValue: { userId: updated!.userId, title: updated!.title, description: updated!.description, targetValue: updated!.targetValue, unit: updated!.unit, startsOn: updated!.startsOn, endsOn: updated!.endsOn, active: updated!.active }, reason: changeReason, requestId: request.requestId, ipAddress: request.ip });
+    return records;
+  });
+  response.json({ data: updated });
+});
 
 router.get("/escalation-dashboard", requirePermission("admin:users"), async (request, response) => {
   const input = parseQuery(request, dashboardListSchema);

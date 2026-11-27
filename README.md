@@ -17,12 +17,22 @@ Vite proxies `/api` to port 3000 in development. For the old fixture-only login,
 
 ## Commands
 
+- `npm run deploy:render` — trigger a Render deploy using `RENDER_DEPLOY_HOOK_URL` from `.env`
+
 - `npm run typecheck` — frontend and backend TypeScript validation
 - `npm test` — focused security and domain tests
 - `npm run build` — production frontend build
 - `npm run db:generate` — generate a migration after schema changes
 - `npm run db:migrate` — apply committed migrations
 - `npm run db:seed` — idempotently seed access-control data and bootstrap the GOD account
+
+### Render deploy hook
+
+1. In Render, open the Bark service and create a deploy hook under **Settings → Deploy → Deploy Hook**.
+2. Put the URL in your local `.env` as `RENDER_DEPLOY_HOOK_URL=...`. Do not commit or paste the URL into source files.
+3. Run `npm run deploy:render` to trigger a deploy of the latest commit on the service's linked branch.
+
+The hook can trigger deployments for this service; it does not provide access to Render settings or logs. Regenerate the hook in Render if its URL is exposed.
 
 ## Security model
 
