@@ -45,6 +45,7 @@ export function createApp() {
     },
     crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
     crossOriginResourcePolicy: { policy: "same-site" },
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
   }));
   app.use((request, response, next) => {
     const origin = request.header("origin");
