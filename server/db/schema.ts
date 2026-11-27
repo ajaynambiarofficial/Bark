@@ -132,10 +132,12 @@ export const services = pgTable("services", {
   sku: varchar("sku", { length: 80 }).notNull().unique(),
   name: varchar("name", { length: 200 }).notNull(),
   category: varchar("category", { length: 80 }).notNull(),
-  durationMinutes: integer("duration_minutes").notNull(),
+  durationMinutes: integer("duration_minutes"),
   basePrice: numeric("base_price", { precision: 12, scale: 2 }).notNull(),
   description: text("description").notNull().default(""),
   active: boolean("active").notNull().default(true),
+  bookingEnabled: boolean("booking_enabled").notNull().default(true),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
   ...timestamps,
 });
 

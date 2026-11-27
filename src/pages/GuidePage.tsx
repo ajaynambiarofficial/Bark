@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { ArrowUpRight, BadgePercent, BookOpen, Check, Clock3, Mail, Map as MapIcon, MapPin, Package, Phone, Search, Stethoscope, X } from "lucide-react";
 import { Card } from "../components/ui/Card";
 import guideData from "../features/guide/guide-data.json";
@@ -7,7 +7,7 @@ const ClinicMap = lazy(() => import("../features/guide/ClinicMap").then((module)
 
 type GuideTab = "packages" | "services" | "contacts" | "locations" | "map" | "discounts";
 type PackageCategory = "all" | "wellness" | "grooming";
-type ServiceCategory = "consultation" | "vaccination" | "grooming";
+type ServiceCategory = "consultation" | "vaccination" | "grooming" | "procedures" | "surgery" | "laboratory";
 
 interface WellnessItem {
   name: string;
@@ -23,24 +23,25 @@ interface WellnessGroup { group: string; note: string; items: WellnessItem[] }
 interface GroomingItem { name: string; audience: string; price: number }
 interface GroomingGroup { group: string; note: string; bestseller?: boolean; items: GroomingItem[] }
 interface SubscriptionTable { group: string; savings: string; columns: string[]; rows: string[][] }
-interface ConsultationPrice { name: string; price: number; tag: string; desc: string }
-interface VaccinationPrice { sku: string; name: string; route: string; dose: string; presentation: string; validity: string; price: number; desc: string }
+interface ConsultationReference { name: string; desc: string }
 interface GroomingGuideline { icon: string; title: string; points: string[] }
 interface Clinic {
   clinic: string; lat: number; lng: number; number: string; manager: string; email: string; phone: string;
   zone: string; zonalHead: string; address: string | null; hours: string;
 }
 interface EscalationContact { level: string; role: string; name: string; email: string; phone: string }
+interface CatalogService { id: string; sku: string; name: string; category: string; durationMinutes: number | null; price: number; description: string; metadata: Record<string, unknown> }
+interface ApiEnvelope<T> { data: T; error?: { message?: string } }
 
 const wellnessGroups = guideData.WELLNESS_PACKAGES as WellnessGroup[];
 const groomingGroups = guideData.GROOMING_PACKAGE_CARDS as GroomingGroup[];
 const subscriptionTables = guideData.SUBSCRIPTION_TABLES as SubscriptionTable[];
-const consultations = guideData.CONSULTATION_PRICES as ConsultationPrice[];
-const vaccinations = guideData.VACCINATION_PRICES as VaccinationPrice[];
+const consultationReferences = guideData.CONSULTATION_PRICES as ConsultationReference[];
 const groomingGuidelines = guideData.GROOMING_GUIDELINES as GroomingGuideline[];
 const clinics = guideData.CLINIC_POC as Clinic[];
 const escalationChain = guideData.ESCALATION_CHAIN as EscalationContact[];
 const sourceUrl = "https://lokeshkrishna1705-prog.github.io/Healthcare_Offer_Sheet/";
+const apiBase = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ?? "/api";
 
 const mainTabs: { id: GuideTab; label: string; icon: typeof Package }[] = [
   { id: "packages", label: "Packages", icon: Package },
@@ -55,6 +56,9 @@ const serviceTabs: { id: ServiceCategory; label: string }[] = [
   { id: "consultation", label: "Consultation" },
   { id: "vaccination", label: "Vaccination" },
   { id: "grooming", label: "Grooming" },
+  { id: "procedures", label: "Procedures" },
+  { id: "surgery", label: "Surgery" },
+  { id: "laboratory", label: "Laboratory" },
 ];
 
 const rupees = (amount: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);
@@ -130,11 +134,43 @@ function PackageSection() {
 
 function ServiceSection() {
   const [category, setCategory] = useState<ServiceCategory>("consultation");
+  const [services, setServices] = useState<CatalogService[]>([]);
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void fetch(`${apiBase}/catalog/services`, { credentials: "include" })
+      .then(async (response) => {
+        const body = await response.json().catch(() => null) as ApiEnvelope<CatalogService[]> | null;
+        if (!response.ok) throw new Error(body?.error?.message ?? "The service catalog could not be loaded.");
+        if (active) setServices(body?.data ?? []);
+      })
+      .catch((caught) => { if (active) setError(caught instanceof Error ? caught.message : "The service catalog could not be loaded."); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
+
+  const selectedServices = useMemo(() => services.filter((service) => {
+    const serviceCategory = service.category.toLowerCase();
+    const categoryMatch = category === "consultation" ? serviceCategory === "consultation"
+      : category === "vaccination" ? serviceCategory.startsWith("vaccination")
+        : category === "grooming" ? serviceCategory.startsWith("grooming")
+          : category === "procedures" ? serviceCategory === "procedures"
+            : category === "surgery" ? serviceCategory.startsWith("surgery")
+              : serviceCategory.startsWith("laboratory");
+    return categoryMatch && matches(query, service.name, service.sku, service.category, service.description);
+  }).sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name)), [category, query, services]);
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap gap-2" role="tablist" aria-label="Service category">{serviceTabs.map(({ id, label }) => <button key={id} type="button" role="tab" aria-selected={category === id} onClick={() => setCategory(id)} className={`min-h-9 rounded-full px-3.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${category === id ? "bg-brand text-on-brand" : "border border-default bg-elevated text-secondary hover:bg-hover"}`}>{label}</button>)}</div>
-      {category === "consultation" && <section className="space-y-3"><div><h2 className="text-lg font-semibold text-primary">Consultation pricing</h2><p className="mt-1 text-sm text-secondary">In-clinic veterinary visit pricing.</p></div><div className="grid gap-3 md:grid-cols-2">{consultations.map((item) => <Card key={item.name} className="p-5"><div className="flex items-start justify-between gap-3"><div><span className="inline-flex rounded-full bg-info-soft px-2.5 py-1 text-[10px] font-semibold text-info">{item.tag}</span><h3 className="mt-3 font-semibold text-primary">{item.name}</h3></div><span className="text-lg font-bold text-primary">{rupees(item.price)}</span></div><p className="mt-2 text-sm leading-6 text-secondary">{item.desc}</p></Card>)}</div></section>}
-      {category === "vaccination" && <section className="space-y-3"><div><h2 className="text-lg font-semibold text-primary">Vaccination pricing</h2><p className="mt-1 text-sm text-secondary">Vaccine route, dose, presentation, and validity information.</p></div><Card className="overflow-hidden"><div className="overflow-x-auto"><table className="w-full min-w-[920px] text-left text-sm"><thead className="bg-subtle text-xs text-muted"><tr>{["Vaccine", "Pet", "Route", "Dose", "Presentation", "Validity", "Price"].map((heading) => <th key={heading} className="px-4 py-3 font-semibold">{heading}</th>)}</tr></thead><tbody className="divide-y divide-default">{vaccinations.map((item) => <tr key={item.sku} className="align-top"><td className="px-4 py-4"><p className="font-semibold text-primary">{item.name}</p><p className="mt-1 text-[11px] text-muted">SKU {item.sku}</p><p className="mt-2 max-w-sm text-xs leading-5 text-secondary">{item.desc}</p></td><td className="px-4 py-4 text-secondary">{item.name.includes("Canine and Feline") ? "Dog & Cat" : item.name.includes("Feline") ? "Cat" : "Dog"}</td><td className="px-4 py-4 text-secondary">{item.route}</td><td className="px-4 py-4 text-secondary">{item.dose}</td><td className="px-4 py-4 text-secondary">{item.presentation}</td><td className="px-4 py-4 text-secondary">{item.validity}</td><td className="whitespace-nowrap px-4 py-4 font-semibold text-primary">{rupees(item.price)}</td></tr>)}</tbody></table></div></Card></section>}
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-end justify-between gap-3"><div><h2 className="text-lg font-semibold text-primary">{serviceTabs.find((item) => item.id === category)?.label} pricing</h2><p className="mt-1 text-sm text-secondary">Current rates and service details from Bark’s catalog.</p></div><span className="text-xs text-muted">{selectedServices.length} services</span></div>
+        <SearchBox value={query} onChange={setQuery} placeholder="Search service, category, or SKU" label="Search services" onClear={() => setQuery("")} />
+        {loading ? <Card className="p-8 text-center text-sm text-secondary">Loading the service catalog…</Card> : error ? <Card className="p-5 text-sm text-error">{error}</Card> : selectedServices.length ? <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">{selectedServices.map((service) => { const reference = category === "consultation" ? consultationReferences.find((item) => item.name.toLowerCase().includes("follow") === service.name.toLowerCase().includes("follow")) : undefined; const description = service.description || reference?.desc; return <Card key={service.id} className="flex h-full flex-col p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><span className="inline-flex rounded-full bg-info-soft px-2 py-1 text-[10px] font-semibold text-info">{service.category}</span><h3 className="mt-2 font-semibold text-primary">{service.name}</h3></div><span className="shrink-0 text-base font-bold text-primary">{rupees(service.price)}</span></div><p className="mt-1 text-[11px] text-muted">SKU {service.sku}</p>{description && <p className="mt-3 text-sm leading-5 text-secondary">{description}</p>}</Card>; })}</div> : <EmptyState title="No services in this category yet" description="New prices will appear here when they are added to Bark’s catalog." />}
+      </section>
       {category === "grooming" && <section className="space-y-3"><div><h2 className="text-lg font-semibold text-primary">Grooming guidelines & eligibility</h2><p className="mt-1 text-sm text-secondary">Review these requirements before confirming a grooming appointment.</p></div><div className="grid gap-3 md:grid-cols-2">{groomingGuidelines.map((guideline) => <Card key={guideline.title} className="p-5"><div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand-soft text-lg" aria-hidden="true">{guideline.icon}</span><div><h3 className="font-semibold text-primary">{guideline.title}</h3><ul className="mt-2 space-y-2">{guideline.points.map((point) => <li key={point} className="text-sm leading-6 text-secondary">{point}</li>)}</ul></div></div></Card>)}</div></section>}
     </div>
   );

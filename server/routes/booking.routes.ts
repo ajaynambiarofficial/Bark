@@ -53,9 +53,10 @@ router.get("/availability", requirePermission("bookings:view"), async (request, 
   if (actor.clinicIds.length && !actor.clinicIds.includes(input.clinicId) && !actor.permissions.has("bookings:manage:any")) throw new ApiError(403, "CLINIC_ACCESS_DENIED", "You cannot view this clinic schedule.");
   const [clinicService] = await db.select({ duration: clinicServices.durationMinutes, serviceDuration: services.durationMinutes })
     .from(clinicServices).innerJoin(services, eq(clinicServices.serviceId, services.id))
-    .where(and(eq(clinicServices.clinicId, input.clinicId), eq(clinicServices.serviceId, input.serviceId), eq(clinicServices.active, true), eq(services.active, true))).limit(1);
+    .where(and(eq(clinicServices.clinicId, input.clinicId), eq(clinicServices.serviceId, input.serviceId), eq(clinicServices.active, true), eq(services.active, true), eq(services.bookingEnabled, true))).limit(1);
   if (!clinicService) throw new ApiError(404, "SERVICE_UNAVAILABLE", "This service is not offered at the selected clinic.");
   const duration = clinicService.duration ?? clinicService.serviceDuration;
+  if (!duration || duration < 1) throw new ApiError(409, "SERVICE_DURATION_UNAVAILABLE", "This service needs a duration before it can be booked.");
   const dayStart = new Date(`${input.date}T09:00:00+05:30`);
   const dayEnd = new Date(`${input.date}T18:00:00+05:30`);
   const existing = await db.select({ startsAt: bookings.startsAt, endsAt: bookings.endsAt }).from(bookings)
@@ -93,12 +94,13 @@ router.post("/", requirePermission("bookings:create"), async (request, response)
   if (input.petId && !pet) throw new ApiError(400, "PET_INVALID", "Select a pet registered to this customer.");
   const [clinicService] = await db.select({ duration: clinicServices.durationMinutes, serviceDuration: services.durationMinutes, sku: services.sku, name: services.name })
     .from(clinicServices).innerJoin(services, eq(clinicServices.serviceId, services.id))
-    .where(and(eq(clinicServices.clinicId, input.clinicId), eq(clinicServices.serviceId, input.serviceId), eq(clinicServices.active, true), eq(services.active, true))).limit(1);
+    .where(and(eq(clinicServices.clinicId, input.clinicId), eq(clinicServices.serviceId, input.serviceId), eq(clinicServices.active, true), eq(services.active, true), eq(services.bookingEnabled, true))).limit(1);
   if (!clinicService) throw new ApiError(400, "SERVICE_UNAVAILABLE", "This service is not offered at the selected clinic.");
   if (clinicService.sku === "GROOM-LONG" && pet?.coatType === "Short") throw new ApiError(400, "GROOMING_COAT_MISMATCH", "Long-coat grooming cannot be booked for a pet registered with a short coat.");
   if (clinicService.sku === "GROOM-LONG" && pet?.coatType !== "Long") throw new ApiError(400, "COAT_TYPE_REQUIRED", "Confirm the pet's long-coat type before booking this routine.");
   if (clinicService.sku === "GROOM-SHORT" && pet?.coatType !== "Short") throw new ApiError(400, "COAT_TYPE_REQUIRED", "Confirm the pet's short-coat type before booking this routine.");
   const duration = clinicService.duration ?? clinicService.serviceDuration;
+  if (!duration || duration < 1) throw new ApiError(409, "SERVICE_DURATION_UNAVAILABLE", "This service needs a duration before it can be booked.");
   const endsAt = new Date(input.startsAt.getTime() + duration * 60_000);
   const created = await db.transaction(async (transaction) => {
     await transaction.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${input.clinicId}))`);

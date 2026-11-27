@@ -239,7 +239,7 @@ export function PawcareBookingPage() {
   useEffect(() => {
     let active = true;
     if (!clinicId) { setServices([]); return; }
-    void api<Service[]>(`/catalog/services?clinicId=${encodeURIComponent(clinicId)}`).then((rows) => { if (active) setServices(rows); }).catch((caught) => { if (active) setError(caught instanceof Error ? caught.message : "Could not load clinic services."); });
+    void api<Service[]>(`/catalog/services?surface=booking&clinicId=${encodeURIComponent(clinicId)}`).then((rows) => { if (active) setServices(rows); }).catch((caught) => { if (active) setError(caught instanceof Error ? caught.message : "Could not load clinic services."); });
     return () => { active = false; };
   }, [clinicId]);
 

@@ -15,12 +15,13 @@ router.get("/clinics", requirePermission("clinics:view"), async (request, respon
 router.get("/services", requirePermission("services:view"), async (request, response) => {
   const actor = request.auth!;
   const clinicId = typeof request.query.clinicId === "string" ? request.query.clinicId : undefined;
+  const bookingOnly = request.query.surface === "booking";
   if (clinicId && actor.clinicIds.length && !actor.clinicIds.includes(clinicId) && !actor.permissions.has("bookings:manage:any")) {
     return response.status(403).json({ error: { code: "CLINIC_ACCESS_DENIED", message: "You cannot view services for this clinic." } });
   }
   const rows = clinicId
-    ? await db.select({ id: services.id, sku: services.sku, name: services.name, category: services.category, durationMinutes: sql<number>`coalesce(${clinicServices.durationMinutes}, ${services.durationMinutes})`.mapWith(Number), price: sql<number>`coalesce(${clinicServices.price}, ${services.basePrice})`.mapWith(Number) }).from(clinicServices).innerJoin(services, eq(clinicServices.serviceId, services.id)).where(and(eq(clinicServices.clinicId, clinicId), eq(clinicServices.active, true), eq(services.active, true))).orderBy(asc(services.name))
-    : await db.select({ id: services.id, sku: services.sku, name: services.name, category: services.category, durationMinutes: services.durationMinutes, price: sql<number>`${services.basePrice}`.mapWith(Number) }).from(services).where(eq(services.active, true)).orderBy(asc(services.name));
+    ? await db.select({ id: services.id, sku: services.sku, name: services.name, category: services.category, description: services.description, metadata: services.metadata, durationMinutes: sql<number | null>`coalesce(${clinicServices.durationMinutes}, ${services.durationMinutes})`, price: sql<number>`coalesce(${clinicServices.price}, ${services.basePrice})`.mapWith(Number) }).from(clinicServices).innerJoin(services, eq(clinicServices.serviceId, services.id)).where(and(eq(clinicServices.clinicId, clinicId), eq(clinicServices.active, true), eq(services.active, true), ...(bookingOnly ? [eq(services.bookingEnabled, true), sql`coalesce(${clinicServices.durationMinutes}, ${services.durationMinutes}) > 0`] : []))).orderBy(asc(services.name))
+    : await db.select({ id: services.id, sku: services.sku, name: services.name, category: services.category, description: services.description, metadata: services.metadata, durationMinutes: services.durationMinutes, price: sql<number>`${services.basePrice}`.mapWith(Number) }).from(services).where(and(eq(services.active, true), ...(bookingOnly ? [eq(services.bookingEnabled, true), sql`${services.durationMinutes} > 0`] : []))).orderBy(asc(services.name));
   response.json({ data: rows });
 });
 

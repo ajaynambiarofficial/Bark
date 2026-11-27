@@ -129,14 +129,14 @@ router.delete("/escalation-dashboard/:id", requirePermission("admin:users"), asy
 router.get("/configuration/catalog", requirePermission("admin:settings"), async (_request, response) => {
   const [clinicRows, serviceRows] = await Promise.all([
     db.select({ id: clinics.id, code: clinics.code, name: clinics.name, active: clinics.active }).from(clinics).orderBy(asc(clinics.name)),
-    db.select({ id: services.id, sku: services.sku, name: services.name, description: services.description, category: services.category, durationMinutes: services.durationMinutes, basePrice: services.basePrice, active: services.active }).from(services).orderBy(asc(services.name)),
+    db.select({ id: services.id, sku: services.sku, name: services.name, description: services.description, category: services.category, durationMinutes: services.durationMinutes, basePrice: services.basePrice, active: services.active, bookingEnabled: services.bookingEnabled }).from(services).orderBy(asc(services.name)),
   ]);
   const clinicServiceRows = await db.select({ clinicId: clinicServices.clinicId, serviceId: clinicServices.serviceId, active: clinicServices.active, price: clinicServices.price, durationMinutes: clinicServices.durationMinutes }).from(clinicServices);
   response.json({ data: { clinics: clinicRows, services: serviceRows.map((service) => ({ ...service, clinicSettings: Object.fromEntries(clinicServiceRows.filter((row) => row.serviceId === service.id).map((row) => [row.clinicId, { active: row.active, price: row.price, durationMinutes: row.durationMinutes }])) })) } });
 });
 
 const clinicSettingsSchema = z.record(uuid, z.object({ active: z.boolean(), price: z.number().min(0).max(1_000_000).nullable(), durationMinutes: z.number().int().min(1).max(1440).nullable() }));
-const serviceInputSchema = z.object({ sku: z.string().trim().min(2).max(80).transform((value) => value.toUpperCase()), name: z.string().trim().min(2).max(200), description: z.string().trim().max(2000).default(""), category: z.string().trim().min(2).max(80), durationMinutes: z.number().int().min(1).max(1440), basePrice: z.number().min(0).max(1_000_000), active: z.boolean().default(true), clinicSettings: clinicSettingsSchema, reason });
+const serviceInputSchema = z.object({ sku: z.string().trim().min(2).max(80).transform((value) => value.toUpperCase()), name: z.string().trim().min(2).max(200), description: z.string().trim().max(2000).default(""), category: z.string().trim().min(2).max(80), durationMinutes: z.number().int().min(1).max(1440).nullable(), basePrice: z.number().min(0).max(1_000_000), active: z.boolean().default(true), bookingEnabled: z.boolean().default(true), clinicSettings: clinicSettingsSchema, reason });
 const offerInputSchema = z.object({ code: z.string().trim().min(2).max(64).regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/).transform((value) => value.toUpperCase()), name: z.string().trim().min(2).max(160), description: z.string().trim().max(1000).default(""), discountType: z.enum(["percent", "amount"]), discountValue: z.number().positive().max(1_000_000), minimumSubtotal: z.number().min(0).max(1_000_000).default(0), clinicId: uuid.nullable().default(null), startsAt: z.coerce.date().nullable().default(null), endsAt: z.coerce.date().nullable().default(null), active: z.boolean().default(true), reason }).superRefine((input, context) => {
   if (input.discountType === "percent" && input.discountValue > 100) context.addIssue({ code: "custom", path: ["discountValue"], message: "Percentage offers cannot exceed 100%." });
   if (input.startsAt && input.endsAt && input.endsAt <= input.startsAt) context.addIssue({ code: "custom", path: ["endsAt"], message: "The end time must be after the start time." });
@@ -155,14 +155,15 @@ async function saveClinicServiceSettings(transaction: DbTransaction, serviceId: 
 
 router.post("/configuration/services", requirePermission("admin:settings"), async (request, response) => {
   const input = parseBody(request, serviceInputSchema);
+  if (input.bookingEnabled && !input.durationMinutes) throw new ApiError(400, "SERVICE_DURATION_REQUIRED", "A duration is required for services available in Pawcare Booking.");
   const actor = request.auth!;
   const [duplicate] = await db.select({ id: services.id }).from(services).where(eq(sql`lower(${services.sku})`, input.sku.toLowerCase())).limit(1);
   if (duplicate) throw new ApiError(409, "SERVICE_SKU_IN_USE", "That service code is already in use.");
   const created = await db.transaction(async (transaction) => {
-    const [service] = await transaction.insert(services).values({ sku: input.sku, name: input.name, description: input.description, category: input.category, durationMinutes: input.durationMinutes, basePrice: input.basePrice.toFixed(2), active: input.active }).returning();
+    const [service] = await transaction.insert(services).values({ sku: input.sku, name: input.name, description: input.description, category: input.category, durationMinutes: input.durationMinutes, basePrice: input.basePrice.toFixed(2), active: input.active, bookingEnabled: input.bookingEnabled }).returning();
     if (!service) throw new ApiError(500, "SERVICE_CREATE_FAILED", "The service could not be created.");
     await saveClinicServiceSettings(transaction, service.id, input.clinicSettings);
-    await appendAudit(transaction, { actor, action: "admin.service_created", entityType: "service", entityId: service.id, newValue: { sku: service.sku, name: service.name, category: service.category, active: service.active, clinicSettings: input.clinicSettings }, reason: input.reason, requestId: request.requestId, ipAddress: request.ip });
+    await appendAudit(transaction, { actor, action: "admin.service_created", entityType: "service", entityId: service.id, newValue: { sku: service.sku, name: service.name, category: service.category, active: service.active, bookingEnabled: service.bookingEnabled, clinicSettings: input.clinicSettings }, reason: input.reason, requestId: request.requestId, ipAddress: request.ip });
     return service;
   });
   response.status(201).json({ data: created });
@@ -171,14 +172,15 @@ router.post("/configuration/services", requirePermission("admin:settings"), asyn
 router.put("/configuration/services/:id", requirePermission("admin:settings"), async (request, response) => {
   const id = uuid.parse(request.params.id);
   const input = parseBody(request, serviceInputSchema.omit({ sku: true }));
+  if (input.bookingEnabled && !input.durationMinutes) throw new ApiError(400, "SERVICE_DURATION_REQUIRED", "A duration is required for services available in Pawcare Booking.");
   const actor = request.auth!;
   const [current] = await db.select().from(services).where(eq(services.id, id)).limit(1);
   if (!current) throw new ApiError(404, "SERVICE_NOT_FOUND", "The service was not found.");
   const previousClinicSettings = await db.select({ clinicId: clinicServices.clinicId, active: clinicServices.active, price: clinicServices.price, durationMinutes: clinicServices.durationMinutes }).from(clinicServices).where(eq(clinicServices.serviceId, id));
   const [updated] = await db.transaction(async (transaction) => {
-    const rows = await transaction.update(services).set({ name: input.name, description: input.description, category: input.category, durationMinutes: input.durationMinutes, basePrice: input.basePrice.toFixed(2), active: input.active, updatedAt: new Date() }).where(eq(services.id, id)).returning();
+    const rows = await transaction.update(services).set({ name: input.name, description: input.description, category: input.category, durationMinutes: input.durationMinutes, basePrice: input.basePrice.toFixed(2), active: input.active, bookingEnabled: input.bookingEnabled, updatedAt: new Date() }).where(eq(services.id, id)).returning();
     await saveClinicServiceSettings(transaction, id, input.clinicSettings);
-    await appendAudit(transaction, { actor, action: "admin.service_configured", entityType: "service", entityId: id, previousValue: { sku: current.sku, name: current.name, description: current.description, category: current.category, durationMinutes: current.durationMinutes, basePrice: current.basePrice, active: current.active, clinicSettings: previousClinicSettings }, newValue: { name: input.name, description: input.description, category: input.category, durationMinutes: input.durationMinutes, basePrice: input.basePrice, clinicSettings: input.clinicSettings, active: input.active }, reason: input.reason, requestId: request.requestId, ipAddress: request.ip });
+    await appendAudit(transaction, { actor, action: "admin.service_configured", entityType: "service", entityId: id, previousValue: { sku: current.sku, name: current.name, description: current.description, category: current.category, durationMinutes: current.durationMinutes, basePrice: current.basePrice, active: current.active, bookingEnabled: current.bookingEnabled, clinicSettings: previousClinicSettings }, newValue: { name: input.name, description: input.description, category: input.category, durationMinutes: input.durationMinutes, basePrice: input.basePrice, clinicSettings: input.clinicSettings, active: input.active, bookingEnabled: input.bookingEnabled }, reason: input.reason, requestId: request.requestId, ipAddress: request.ip });
     return rows;
   });
   response.json({ data: updated });
