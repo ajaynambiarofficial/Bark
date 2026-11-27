@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { and, count, desc, eq, gte, gt, inArray, isNull, lt, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, gt, inArray, isNull, lt, lte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/client.js";
 import { agentGoals, auditEvents, bookings, clinics, escalations, users } from "../db/schema.js";
@@ -11,9 +11,9 @@ const dateQuery = z.object({ from: z.coerce.date().default(() => new Date(new Da
 
 router.get("/my-goals", requirePermission("dashboard:view:self"), async (request, response) => {
   const today = new Date().toISOString().slice(0, 10);
-  const records = await db.select({ id: agentGoals.id, title: agentGoals.title, description: agentGoals.description, targetValue: agentGoals.targetValue, unit: agentGoals.unit, startsOn: agentGoals.startsOn, endsOn: agentGoals.endsOn })
+  const records = await db.select({ id: agentGoals.id, title: agentGoals.title, description: agentGoals.description, targetValue: agentGoals.targetValue, unit: agentGoals.unit, period: agentGoals.period, startsOn: agentGoals.startsOn, endsOn: agentGoals.endsOn })
     .from(agentGoals)
-    .where(and(eq(agentGoals.userId, request.auth!.userId), eq(agentGoals.active, true), gte(agentGoals.endsOn, today)))
+    .where(and(eq(agentGoals.userId, request.auth!.userId), eq(agentGoals.active, true), lte(agentGoals.startsOn, today), gte(agentGoals.endsOn, today)))
     .orderBy(desc(agentGoals.startsOn));
   response.json({ data: records });
 });

@@ -2,7 +2,7 @@ import { Target } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Card } from "../ui/Card";
 
-interface Goal { id: string; title: string; description: string; targetValue: string; unit: string; startsOn: string; endsOn: string }
+interface Goal { id: string; title: string; description: string; targetValue: string; unit: string; period: "today" | "week" | "month" | null; startsOn: string; endsOn: string }
 const apiBase = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ?? "/api";
 
 export function MyAgentGoals() {
@@ -15,7 +15,7 @@ export function MyAgentGoals() {
       .then(async (response) => {
         const body = await response.json() as { data?: Goal[] };
         if (!response.ok) throw new Error("Could not load goals");
-        setGoals(body.data ?? []);
+        setGoals((body.data ?? []).filter((goal) => !goal.period));
       })
       .catch(() => { if (!controller.signal.aborted) setFailed(true); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });

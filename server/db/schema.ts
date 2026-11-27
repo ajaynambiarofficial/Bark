@@ -72,13 +72,14 @@ export const agentGoals = pgTable("agent_goals", {
   description: text("description").notNull().default(""),
   targetValue: numeric("target_value", { precision: 14, scale: 2 }).notNull(),
   unit: varchar("unit", { length: 40 }).notNull(),
+  period: varchar("period", { length: 16 }),
   startsOn: date("starts_on").notNull(),
   endsOn: date("ends_on").notNull(),
   active: boolean("active").notNull().default(true),
   createdBy: uuid("created_by").notNull().references(() => users.id),
   updatedBy: uuid("updated_by").notNull().references(() => users.id),
   ...timestamps,
-}, (table) => [index("agent_goals_user_active_idx").on(table.userId, table.active), index("agent_goals_period_idx").on(table.startsOn, table.endsOn)]);
+}, (table) => [index("agent_goals_user_active_idx").on(table.userId, table.active), index("agent_goals_period_idx").on(table.startsOn, table.endsOn), uniqueIndex("agent_goals_user_period_active_unique").on(table.userId, table.period).where(sql`${table.active} = true AND ${table.period} IS NOT NULL`)]);
 
 export const userPermissions = pgTable("user_permissions", {
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),

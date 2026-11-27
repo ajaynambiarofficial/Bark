@@ -30,7 +30,7 @@ const goalDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD for goa
   const parsed = new Date(`${value}T00:00:00.000Z`);
   return !Number.isNaN(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value;
 }, "Enter a valid calendar date.");
-const agentGoalInputSchema = z.object({ userId: uuid, title: z.string().trim().min(2).max(160), description: z.string().trim().max(2000).default(""), targetValue: z.number().positive().max(1_000_000_000), unit: z.string().trim().min(1).max(40), startsOn: goalDate, endsOn: goalDate, reason });
+const agentGoalInputSchema = z.object({ userId: uuid, title: z.string().trim().min(2).max(160), description: z.string().trim().max(2000).default(""), targetValue: z.number().positive().max(1_000_000_000), unit: z.string().trim().min(1).max(40), period: z.enum(["today", "week", "month"]).nullable().default(null), startsOn: goalDate, endsOn: goalDate, reason });
 const agentGoalUpdateSchema = agentGoalInputSchema.omit({ userId: true }).partial().extend({ active: z.boolean().optional(), reason });
 
 async function assertAssignableRole(roleId: string, actorClearance: number) {
@@ -54,10 +54,14 @@ router.post("/agent-goals", requirePermission("admin:users"), async (request, re
   if (input.endsOn < input.startsOn) throw new ApiError(400, "GOAL_PERIOD_INVALID", "The end date must be on or after the start date.");
   const [agent] = await db.select({ id: users.id, displayName: users.displayName, roleKey: roles.key, accountStatus: users.accountStatus }).from(users).innerJoin(roles, eq(users.roleId, roles.id)).where(eq(users.id, input.userId)).limit(1);
   if (!agent || agent.accountStatus !== "active" || !agent.roleKey.includes("agent")) throw new ApiError(400, "GOAL_AGENT_INVALID", "Select an active agent account.");
+  if (input.period) {
+    const [existing] = await db.select({ id: agentGoals.id }).from(agentGoals).where(and(eq(agentGoals.userId, input.userId), eq(agentGoals.period, input.period), eq(agentGoals.active, true))).limit(1);
+    if (existing) throw new ApiError(409, "GOAL_PERIOD_IN_USE", "This agent already has an active booking target for that period. Edit or archive it first.");
+  }
   const actor = request.auth!;
   const [created] = await db.transaction(async (transaction) => {
-    const records = await transaction.insert(agentGoals).values({ userId: input.userId, title: input.title, description: input.description, targetValue: String(input.targetValue), unit: input.unit, startsOn: input.startsOn, endsOn: input.endsOn, createdBy: actor.userId, updatedBy: actor.userId }).returning();
-    await appendAudit(transaction, { actor, action: "admin.agent_goal_created", entityType: "agent_goal", entityId: records[0]!.id, newValue: { userId: input.userId, title: input.title, description: input.description, targetValue: input.targetValue, unit: input.unit, startsOn: input.startsOn, endsOn: input.endsOn }, reason: input.reason, requestId: request.requestId, ipAddress: request.ip });
+    const records = await transaction.insert(agentGoals).values({ userId: input.userId, title: input.title, description: input.description, targetValue: String(input.targetValue), unit: input.unit, period: input.period, startsOn: input.startsOn, endsOn: input.endsOn, createdBy: actor.userId, updatedBy: actor.userId }).returning();
+    await appendAudit(transaction, { actor, action: "admin.agent_goal_created", entityType: "agent_goal", entityId: records[0]!.id, newValue: { userId: input.userId, title: input.title, description: input.description, targetValue: input.targetValue, unit: input.unit, period: input.period, startsOn: input.startsOn, endsOn: input.endsOn }, reason: input.reason, requestId: request.requestId, ipAddress: request.ip });
     return records;
   });
   response.status(201).json({ data: { ...created, agent: { id: agent.id, displayName: agent.displayName } } });
@@ -71,11 +75,17 @@ router.patch("/agent-goals/:id", requirePermission("admin:users"), async (reques
   const startsOn = input.startsOn ?? current.startsOn;
   const endsOn = input.endsOn ?? current.endsOn;
   if (endsOn < startsOn) throw new ApiError(400, "GOAL_PERIOD_INVALID", "The end date must be on or after the start date.");
+  const targetPeriod = input.period === undefined ? current.period : input.period;
+  const remainsActive = input.active ?? current.active;
+  if (targetPeriod && remainsActive) {
+    const [existing] = await db.select({ id: agentGoals.id }).from(agentGoals).where(and(eq(agentGoals.userId, current.userId), eq(agentGoals.period, targetPeriod), eq(agentGoals.active, true), ne(agentGoals.id, id))).limit(1);
+    if (existing) throw new ApiError(409, "GOAL_PERIOD_IN_USE", "This agent already has an active booking target for that period. Edit or archive it first.");
+  }
   const actor = request.auth!;
   const { reason: changeReason, targetValue, ...changes } = input;
   const [updated] = await db.transaction(async (transaction) => {
     const records = await transaction.update(agentGoals).set({ ...changes, ...(targetValue === undefined ? {} : { targetValue: String(targetValue) }), updatedBy: actor.userId, updatedAt: new Date() }).where(eq(agentGoals.id, id)).returning();
-    await appendAudit(transaction, { actor, action: input.active === false ? "admin.agent_goal_archived" : input.active === true && !current.active ? "admin.agent_goal_restored" : "admin.agent_goal_updated", entityType: "agent_goal", entityId: id, previousValue: { userId: current.userId, title: current.title, description: current.description, targetValue: current.targetValue, unit: current.unit, startsOn: current.startsOn, endsOn: current.endsOn, active: current.active }, newValue: { userId: updated!.userId, title: updated!.title, description: updated!.description, targetValue: updated!.targetValue, unit: updated!.unit, startsOn: updated!.startsOn, endsOn: updated!.endsOn, active: updated!.active }, reason: changeReason, requestId: request.requestId, ipAddress: request.ip });
+    await appendAudit(transaction, { actor, action: input.active === false ? "admin.agent_goal_archived" : input.active === true && !current.active ? "admin.agent_goal_restored" : "admin.agent_goal_updated", entityType: "agent_goal", entityId: id, previousValue: { userId: current.userId, title: current.title, description: current.description, targetValue: current.targetValue, unit: current.unit, period: current.period, startsOn: current.startsOn, endsOn: current.endsOn, active: current.active }, newValue: { userId: updated!.userId, title: updated!.title, description: updated!.description, targetValue: updated!.targetValue, unit: updated!.unit, period: updated!.period, startsOn: updated!.startsOn, endsOn: updated!.endsOn, active: updated!.active }, reason: changeReason, requestId: request.requestId, ipAddress: request.ip });
     return records;
   });
   response.json({ data: updated });

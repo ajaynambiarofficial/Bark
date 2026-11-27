@@ -85,6 +85,13 @@
       "when": 1795763453692,
       "tag": "0011_clear_kinsey_walden",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795775895798,
+      "tag": "0012_agent_goal_booking_period",
+      "breakpoints": true
     }
   ]
 }

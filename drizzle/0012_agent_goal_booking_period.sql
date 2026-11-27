@@ -1,0 +1,2 @@
+ALTER TABLE "agent_goals" ADD COLUMN "period" varchar(16);--> statement-breakpoint
+CREATE UNIQUE INDEX "agent_goals_user_period_active_unique" ON "agent_goals" USING btree ("user_id","period") WHERE "agent_goals"."active" = true AND "agent_goals"."period" IS NOT NULL;
