@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { FileText, Plus, Printer, Search, Trash2 } from "lucide-react";
+import { FileText, MessageCircle, Plus, Printer, Search, Trash2 } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { PageHeader } from "../components/ui/PageHeader";
@@ -51,6 +51,8 @@ export function QuoteGeneratorPage() {
   const [query, setQuery] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [brochureType, setBrochureType] = useState("");
+  const [brochureMessage, setBrochureMessage] = useState<string | null>(null);
   const [customerEmail, setCustomerEmail] = useState("");
   const [codeReference, setCodeReference] = useState("");
   const [discountType, setDiscountType] = useState<"percent" | "amount">("percent");
@@ -128,7 +130,14 @@ export function QuoteGeneratorPage() {
           <h2 className="text-base font-semibold text-primary">Customer and clinic</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <label className={labelClass}>Customer name<input required value={customerName} onChange={(event) => { setCustomerName(event.target.value); setQuote(null); }} className={inputClass} placeholder="Pet parent name" /></label>
-            <label className={labelClass}>Phone<input required type="tel" value={customerPhone} onChange={(event) => { setCustomerPhone(event.target.value); setQuote(null); }} className={inputClass} placeholder="Contact number" /></label>
+            <label className={labelClass}>Phone<input required type="tel" value={customerPhone} onChange={(event) => { setCustomerPhone(event.target.value); setQuote(null); setBrochureMessage(null); }} className={inputClass} placeholder="Contact number" /></label>
+            {customerPhone.trim() && <section className="rounded-xl border border-default bg-subtle/50 p-4 sm:col-span-2" aria-labelledby="brochure-heading">
+              <div className="flex items-center gap-2"><MessageCircle size={17} className="text-brand" aria-hidden="true" /><h3 id="brochure-heading" className="text-sm font-semibold text-primary">Send a brochure on WhatsApp</h3></div>
+              <p className="mt-1 text-xs text-secondary">Choose a brochure for {customerPhone.trim()}.</p>
+              <label className={`${labelClass} mt-3 block`}>Brochure type<select value={brochureType} onChange={(event) => { setBrochureType(event.target.value); setBrochureMessage(null); }} className={`${inputClass} mt-1.5`}><option value="">Choose a brochure</option><option value="consultation">Consultation</option><option value="vaccination">Vaccination</option><option value="grooming">Grooming</option><option value="surgery">Surgery</option></select></label>
+              <Button type="button" fullWidth disabled={!brochureType || customerPhone.replace(/\D/g, "").length < 8} icon={<MessageCircle size={16} />} className="mt-3" onClick={() => setBrochureMessage("WhatsApp brochure sending isn’t connected yet. No message was sent.")}>Send brochure</Button>
+              {brochureMessage && <p role="status" className="mt-2 text-xs text-muted">{brochureMessage}</p>}
+            </section>}
             <label className={labelClass}>Email (optional)<input type="email" value={customerEmail} onChange={(event) => { setCustomerEmail(event.target.value); setQuote(null); }} className={inputClass} placeholder="name@example.com" /></label>
             <label className={labelClass}>Clinic<select required value={clinicId} onChange={(event) => { setClinicId(event.target.value); setLines([]); setOffers([]); setSelectedOfferId(""); setCodeReference(""); setQuote(null); }} className={inputClass}><option value="">Choose clinic</option>{clinics.map((clinic) => <option key={clinic.id} value={clinic.id}>{clinic.name}</option>)}</select></label>
           </div>

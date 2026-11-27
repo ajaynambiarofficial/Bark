@@ -32,11 +32,19 @@ export function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [snowEnabled, setSnowEnabled] = useState(true);
   const isDemoMode = import.meta.env.VITE_USE_MOCK_AUTH === "true";
   // This is a public OAuth client identifier. Keep the checked-in fallback so
   // a missing Render build variable cannot silently remove Google sign-in.
   const googleClientId = ((import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined)?.trim() || "29732196650-gu3aphpdp733irmkmsi3jr4j06fg592b.apps.googleusercontent.com");
   const googleButtonRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const apiBase = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ?? "/api";
+    void fetch(`${apiBase}/public/login-settings`).then((response) => response.ok ? response.json() as Promise<{ data?: { snowEnabled?: boolean } }> : null).then((body) => {
+      if (typeof body?.data?.snowEnabled === "boolean") setSnowEnabled(body.data.snowEnabled);
+    }).catch(() => { /* Keep the festive default if settings are unavailable. */ });
+  }, []);
 
   useEffect(() => {
     if (!googleClientId || isDemoMode) return;
@@ -94,7 +102,7 @@ export function LoginPage() {
   };
 
   return (
-    <main className="min-h-dvh bg-app lg:grid lg:grid-cols-[minmax(360px,0.9fr)_minmax(520px,1.1fr)]">
+    <main className="relative isolate min-h-dvh overflow-hidden bg-app lg:grid lg:grid-cols-[minmax(360px,0.9fr)_minmax(520px,1.1fr)]">
       <section className="relative hidden min-h-dvh overflow-hidden bg-brand-deep px-10 py-10 text-white lg:flex lg:flex-col xl:px-16 xl:py-14">
         <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
           <div className="brand-pattern absolute inset-0 opacity-[0.06]" />
@@ -102,6 +110,7 @@ export function LoginPage() {
           <div className="absolute -bottom-56 -left-36 size-[28rem] rounded-full bg-emerald-400/15 blur-3xl" />
           <div className="absolute right-[-16%] top-[32%] h-px w-[78%] rotate-[-28deg] bg-gradient-to-r from-transparent via-lime-200/40 to-transparent" />
         </div>
+        {snowEnabled && <ChristmasSnow />}
         <div className="relative z-10 flex items-center gap-3">
           <BarkLogo inverse />
           <span className="h-5 w-px bg-white/20" aria-hidden="true" />
@@ -121,9 +130,10 @@ export function LoginPage() {
         </div>
         <p className="absolute bottom-10 left-10 z-10 text-xs text-white/40 xl:left-16">Built for the people who keep every tail moving.</p>
       </section>
-      <section className="flex min-h-dvh items-center justify-center px-4 py-8 sm:px-8 lg:px-12">
-        <div className="w-full max-w-[460px]">
-          <div className="mb-8 lg:hidden"><BarkLogo /></div>
+      <section className="relative isolate flex min-h-dvh items-center justify-center px-4 py-8 sm:px-8 lg:px-12">
+        {snowEnabled && <ChristmasSnow />}
+        <div className="relative z-10 w-full max-w-[460px]">
+          <div className="mb-8 lg:hidden"><BarkLogo /><p className="mt-2 text-sm font-semibold tracking-tight text-primary">The Supertails SuperTool</p></div>
           <div className="mb-7"><p className="text-xs font-semibold tracking-[0.08em] text-brand uppercase">Welcome back</p><h1 className="mt-2 text-[clamp(1.9rem,5vw,2.35rem)] font-semibold tracking-[-0.045em] text-primary">Sign in to Bark</h1><p className="mt-3 text-[15px] leading-6 text-secondary">Your workspace for seamless clinic operations.</p></div>
           <Card className="p-5 sm:p-6">
             {(location.state as LoginLocationState | null)?.message && <p role="status" className="mb-4 rounded-lg bg-success-soft p-3 text-sm text-success">{(location.state as LoginLocationState).message}</p>}
@@ -148,4 +158,8 @@ export function LoginPage() {
       </section>
     </main>
   );
+}
+
+function ChristmasSnow() {
+  return <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true"><div className="login-snowfall" /><div className="login-snowbank login-snowbank-back" /><div className="login-snowbank login-snowbank-front" /></div>;
 }

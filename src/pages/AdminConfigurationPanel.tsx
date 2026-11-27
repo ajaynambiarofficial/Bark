@@ -1,4 +1,4 @@
-import { Building2, Check, CircleDollarSign, Plus, Search, Tag, X } from "lucide-react";
+import { Building2, Check, CircleDollarSign, Palette, Plus, Search, Tag, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "../components/ui/Button";
 
@@ -7,10 +7,11 @@ interface ClinicServiceConfig { active: boolean; price: string | null; durationM
 interface Service { id: string; sku: string; name: string; description: string; category: string; durationMinutes: number; basePrice: string; active: boolean; clinicSettings: Record<string, ClinicServiceConfig> }
 interface Offer { id: string; code: string; name: string; description: string; discountType: "percent" | "amount"; discountValue: string; minimumSubtotal: string; clinicId: string | null; clinicName: string | null; startsAt: string | null; endsAt: string | null; active: boolean }
 interface ApiEnvelope<T> { data: T; error?: { message?: string } }
-type ConfigSection = "clinics" | "services" | "offers";
+type ConfigSection = "appearance" | "clinics" | "services" | "offers";
 type ClinicDraft = Omit<Clinic, "id" | "code"> & { id: string; code: string; reason: string };
 type ServiceDraft = { id: string | null; sku: string; name: string; description: string; category: string; durationMinutes: string; basePrice: string; active: boolean; clinicSettings: Record<string, ClinicServiceConfig>; reason: string };
 type OfferDraft = { id: string | null; code: string; name: string; description: string; discountType: "percent" | "amount"; discountValue: string; minimumSubtotal: string; clinicId: string; startsAt: string; endsAt: string; active: boolean; reason: string };
+interface ApplicationSetting { key: string; value: unknown; description: string }
 
 const apiBase = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ?? "/api";
 const inputClass = "mt-1.5 min-h-11 w-full rounded-lg border border-input bg-input px-3 text-sm text-primary";
@@ -44,6 +45,8 @@ export function AdminConfigurationPanel() {
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [offers, setOffers] = useState<Offer[]>([]);
+  const [snowEnabled, setSnowEnabled] = useState(true);
+  const [appearanceReason, setAppearanceReason] = useState("");
   const [clinicDraft, setClinicDraft] = useState<ClinicDraft | null>(null);
   const [serviceDraft, setServiceDraft] = useState<ServiceDraft | null>(null);
   const [offerDraft, setOfferDraft] = useState<OfferDraft | null>(null);
@@ -58,12 +61,14 @@ export function AdminConfigurationPanel() {
   const load = async () => {
     setLoading(true); setError(null);
     try {
-      const [clinicRows, catalog, offerRows] = await Promise.all([
+      const [clinicRows, catalog, offerRows, settings] = await Promise.all([
         api<Clinic[]>("/admin/clinics"),
         api<{ services: Service[] }>("/admin/configuration/catalog"),
         api<Offer[]>("/admin/configuration/offers"),
+        api<{ settings: ApplicationSetting[] }>("/admin/settings"),
       ]);
-      setClinics(clinicRows); setServices(catalog.services); setOffers(offerRows);
+      const snowSetting = settings.settings.find((setting) => setting.key === "login.snow.enabled");
+      setClinics(clinicRows); setServices(catalog.services); setOffers(offerRows); setSnowEnabled(snowSetting?.value !== false);
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Could not load configuration."); }
     finally { setLoading(false); }
   };
@@ -73,6 +78,15 @@ export function AdminConfigurationPanel() {
   const visibleClinics = useMemo(() => clinics.filter((clinic) => !clinicQuery.trim() || `${clinic.name} ${clinic.code} ${clinic.address}`.toLowerCase().includes(clinicQuery.trim().toLowerCase())), [clinicQuery, clinics]);
   const visibleServices = useMemo(() => services.filter((service) => !serviceQuery.trim() || `${service.name} ${service.category} ${service.sku}`.toLowerCase().includes(serviceQuery.trim().toLowerCase())), [serviceQuery, services]);
   const visibleOffers = useMemo(() => offers.filter((offer) => !offerQuery.trim() || `${offer.name} ${offer.code} ${offer.clinicName ?? "all clinics"}`.toLowerCase().includes(offerQuery.trim().toLowerCase())), [offerQuery, offers]);
+
+  const saveAppearance = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault(); setSaving(true); setError(null); setSuccess(null);
+    try {
+      await api("/admin/settings/login.snow.enabled", { method: "PUT", body: JSON.stringify({ value: snowEnabled, description: "Controls the decorative snowfall on the public login page.", secret: false, reason: appearanceReason }) });
+      setAppearanceReason(""); setSuccess("Login appearance saved.");
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "Could not save login appearance."); }
+    finally { setSaving(false); }
+  };
 
   const editClinic = (clinic: Clinic) => {
     setClinicDraft({ ...clinic, address: clinic.address ?? "", timezone: clinic.timezone || "Asia/Calcutta", phone: clinic.phone ?? "", email: clinic.email ?? "", reason: "" });
@@ -131,6 +145,7 @@ export function AdminConfigurationPanel() {
   };
 
   const sections: { key: ConfigSection; label: string; description: string; count: number; icon: typeof Building2 }[] = [
+    { key: "appearance", label: "Appearance", description: "Login page experience", count: 1, icon: Palette },
     { key: "clinics", label: "Clinics", description: "Details and availability", count: clinics.length, icon: Building2 },
     { key: "services", label: "Services", description: "Catalog and clinic pricing", count: services.length, icon: CircleDollarSign },
     { key: "offers", label: "Offers", description: "Codes, discounts, validity", count: offers.length, icon: Tag },
@@ -138,14 +153,14 @@ export function AdminConfigurationPanel() {
 
   return <div className="space-y-5 p-4 sm:p-6">
     <div><p className="text-xs font-semibold uppercase tracking-wide text-brand">Configure</p><h2 className="mt-1 text-xl font-semibold text-primary">Business setup</h2><p className="mt-1 max-w-2xl text-sm text-secondary">Each area has its own list and edit flow. Changes are saved and added to the admin audit history.</p></div>
-    <div className="grid gap-2 md:grid-cols-3" role="tablist" aria-label="Configuration areas">
+    <div className="grid gap-2 md:grid-cols-4" role="tablist" aria-label="Configuration areas">
       {sections.map(({ key, label, description, count, icon: Icon }) => <button key={key} type="button" role="tab" aria-selected={section === key} onClick={() => { setSection(key); setError(null); setSuccess(null); }} className={`flex min-h-[76px] items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-focus ${section === key ? "border-brand/40 bg-brand-soft" : "border-default bg-surface hover:bg-subtle"}`}>
         <span className={`grid size-10 shrink-0 place-items-center rounded-lg ${section === key ? "bg-brand text-on-brand" : "bg-subtle text-secondary"}`}><Icon size={18} /></span><span className="min-w-0 flex-1"><span className="block font-semibold text-primary">{label}</span><span className="mt-0.5 block text-xs text-muted">{description}</span></span><span className="rounded-full bg-surface px-2.5 py-1 text-xs font-semibold text-secondary">{count}</span>
       </button>)}
     </div>
     {error && <p role="alert" className="rounded-lg border border-error-border bg-error-soft p-3 text-sm text-error">{error}</p>}
     {success && <p role="status" className="flex items-center gap-2 rounded-lg border border-success/30 bg-success-soft p-3 text-sm text-success"><Check size={16} />{success}</p>}
-    {loading ? <p className="rounded-xl border border-default p-8 text-center text-sm text-muted">Loading configuration…</p> : section === "clinics" ? <div className="grid gap-5 xl:grid-cols-[minmax(260px,0.8fr)_minmax(0,1.5fr)]">
+    {loading ? <p className="rounded-xl border border-default p-8 text-center text-sm text-muted">Loading configuration…</p> : section === "appearance" ? <section className="rounded-xl border border-default bg-subtle/30 p-5 sm:p-6"><form onSubmit={(event) => void saveAppearance(event)} className="max-w-2xl space-y-5"><div><p className="text-xs font-semibold uppercase tracking-wide text-brand">Public login</p><h3 className="mt-1 text-lg font-semibold text-primary">Login page appearance</h3><p className="mt-1 text-sm leading-6 text-secondary">Control decorative effects shown before employees sign in. This does not change authentication or security.</p></div><label className="flex items-start gap-3 rounded-xl border border-default bg-surface p-4"><input type="checkbox" checked={snowEnabled} onChange={(event) => setSnowEnabled(event.target.checked)} className="mt-1 size-4 accent-brand" /><span><span className="block text-sm font-semibold text-primary">Show snowfall</span><span className="mt-1 block text-xs leading-5 text-muted">Display the seasonal snowfall effect on the login page.</span></span></label><label className={labelClass}>Reason for change<input required minLength={3} maxLength={1000} value={appearanceReason} onChange={(event) => setAppearanceReason(event.target.value)} placeholder="Why is the login appearance changing?" className={inputClass} /></label><div className="flex justify-end"><Button type="submit" disabled={saving}>{saving ? "Saving…" : "Save appearance"}</Button></div></form></section> : section === "clinics" ? <div className="grid gap-5 xl:grid-cols-[minmax(260px,0.8fr)_minmax(0,1.5fr)]">
       <section className="min-w-0"><div className="mb-3 flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-semibold text-primary">Clinic locations</h3><p className="text-xs text-muted">{clinics.filter((clinic) => clinic.active).length} active of {clinics.length}</p></div><label className="relative block w-full max-w-xs"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" /><input aria-label="Search clinics" value={clinicQuery} onChange={(event) => setClinicQuery(event.target.value)} placeholder="Search clinics" className="min-h-10 w-full rounded-lg border border-input bg-input pl-9 pr-3 text-sm" /></label></div>
         <div className="divide-y divide-default overflow-hidden rounded-xl border border-default">{visibleClinics.length ? visibleClinics.map((clinic) => <button type="button" key={clinic.id} aria-pressed={clinicDraft?.id === clinic.id} onClick={() => editClinic(clinic)} className={`flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left hover:bg-subtle ${clinicDraft?.id === clinic.id ? "bg-brand-soft" : "bg-surface"}`}><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-primary">{clinic.name}</span><span className="mt-0.5 block text-xs text-muted">{clinic.code} · {clinic.address || "Address not set"}</span></span><span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${clinic.active ? "bg-success-soft text-success" : "bg-subtle text-muted"}`}>{clinic.active ? "Active" : "Inactive"}</span></button>) : <p className="p-6 text-center text-sm text-muted">No matching clinics.</p>}</div>
       </section>

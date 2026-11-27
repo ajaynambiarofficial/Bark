@@ -20,6 +20,7 @@ import { noticeRouter } from "./routes/notice.routes.js";
 import { teamEmailRouter } from "./routes/team-email.routes.js";
 import { moduleRouter } from "./routes/module.routes.js";
 import { clinicMapRouter } from "./routes/clinic-map.routes.js";
+import { publicRouter } from "./routes/public.routes.js";
 import { resolve } from "node:path";
 
 export function createApp() {
@@ -65,6 +66,7 @@ export function createApp() {
 
   app.get("/api/health", (_request, response) => response.json({ status: "ok", version: process.env.npm_package_version ?? "0.1.0" }));
   app.use("/api/auth", authRouter);
+  app.use("/api/public", publicRouter);
   app.use("/api", requireAuth);
   app.use("/api/modules", moduleRouter);
   app.use("/api/clinic-map", clinicMapRouter);
